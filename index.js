@@ -1,4 +1,4 @@
-// ===================== KEEP ALIVE (Render / Replit) =====================
+// ===================== KEEP ALIVE =====================
 const express = require("express");
 const app = express();
 app.get("/", (req, res) => res.send("Bot ativo!"));
@@ -18,7 +18,7 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  Events,
+  Events
 } = require("discord.js");
 
 const client = new Client({
@@ -26,16 +26,17 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.MessageContent
   ],
 });
 
-// ===================== ENV VARS =====================
+// ===================== ENV =====================
 const CANAL_PEDIR_SET = process.env.CANAL_PEDIR_SET;
 const CANAL_ACEITA_SET = process.env.CANAL_ACEITA_SET;
 const CARGO_APROVADO = process.env.CARGO_APROVADO;
 const CARGO_APROVADO_2 = process.env.CARGO_APROVADO_2;
 const TOKEN = process.env.TOKEN;
+const PREFIX = "!";
 
 // ===================== BOT ONLINE =====================
 client.on("ready", async () => {
@@ -50,7 +51,7 @@ client.on("ready", async () => {
     )
     .addFields({
       name: "📌 Observações",
-      value: "• A resenha aqui e garantida.\n• Nao leve a brincadeira a serio.",
+      value: "• A resenha aqui é garantida.\n• Não leve a brincadeira a sério.",
     })
     .setColor("#f1c40f");
 
@@ -145,11 +146,10 @@ client.on(Events.InteractionCreate, async interaction => {
   if (!["aprovar", "negar"].includes(acao)) return;
 
   const membro = await interaction.guild.members.fetch(userId);
-
   const embed = interaction.message.embeds[0];
   const nomeInformado = embed.fields.find(f => f.name === "Nome Informado")?.value;
 
-  // ===================== APROVAR =====================
+  // ===== APROVAR =====
   if (acao === "aprovar") {
     try {
       await membro.setNickname(`A7 ${nomeInformado}`);
@@ -159,167 +159,129 @@ client.on(Events.InteractionCreate, async interaction => {
         CARGO_APROVADO_2,
       ]);
 
-      // Embed bonito de aprovado
       const aprovadoEmbed = new EmbedBuilder()
-        .setTitle("Registro Aprovado")
-        .setColor("#00ff73")
-        .setThumbnail(membro.user.displayAvatarURL())
+        .setTitle("SET APROVADO")
+        .setColor("#00ff99")
+        .setThumbnail(interaction.guild.iconURL())
         .addFields(
-          { name: "Usuário", value: `${membro}` },
-          { name: "ID", value: embed.fields[2].value },
-          { name: "Nome Informado", value: nomeInformado },
-          { name: "Aprovado por", value: `${interaction.user}` }
-        )
-        .setFooter({ text: "Aprovado com sucesso!" });
+          { name: "Usuário:", value: `${membro}` },
+          { name: "Novo Nick:", value: `A7 ${nomeInformado}` },
+          { name: "Aprovado por:", value: `${interaction.user}` }
+        );
 
-      await interaction.message.edit({
-        embeds: [aprovadoEmbed],
-        components: [],
-      });
-
-      await interaction.reply({
-        content: "Aprovado!",
-        ephemeral: true,
-      });
+      await interaction.update({ embeds: [aprovadoEmbed], components: [] });
 
     } catch (e) {
-      console.log(e);
       await interaction.reply({
-        content: "❌ Erro ao aprovar. O bot precisa de permissões.",
+        content: "❌ Erro ao aprovar. Permissões insuficientes.",
         ephemeral: true,
       });
     }
   }
 
-  // ===================== NEGAR =====================
+  // ===== NEGAR =====
   if (acao === "negar") {
     try {
       await membro.kick("Registro negado.");
 
       const negadoEmbed = new EmbedBuilder()
-        .setTitle("Registro Negado")
-        .setColor("#ff0000")
+        .setTitle("REGISTRO NEGADO")
+        .setColor("#ff3333")
+        .setThumbnail(interaction.guild.iconURL())
         .addFields(
-          { name: "Usuário", value: `${membro}` },
-          { name: "Negado por", value: `${interaction.user}` }
+          { name: "Usuário:", value: `${membro.user.tag}` },
+          { name: "Negado por:", value: `${interaction.user}` }
         );
 
-      await interaction.message.edit({
-        embeds: [negadoEmbed],
-        components: [],
-      });
-
-      await interaction.reply({
-        content: "Negado!",
-        ephemeral: true,
-      });
+      await interaction.update({ embeds: [negadoEmbed], components: [] });
 
     } catch (e) {
-      console.log(e);
       await interaction.reply({
-        content: "❌ Não consegui expulsar o usuário. Verifique permissões.",
+        content: "❌ Não consegui expulsar o usuário.",
         ephemeral: true,
       });
     }
   }
 });
 
-
-// ======================================================================
-// =====================   COMANDO !addcargo   ==========================
-// ======================================================================
+// ===================== ADD / REMOVER CARGO =====================
 client.on("messageCreate", async message => {
-  if (!message.content.startsWith("!addcargo")) return;
+  if (!message.guild || message.author.bot) return;
+  if (!message.content.startsWith(PREFIX)) return;
 
-  const args = message.content.split(" ");
-  const cargo = message.mentions.roles.first();
-  const usuario = message.mentions.members.first();
+  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+  const cmd = args.shift().toLowerCase();
 
-  if (!cargo || !usuario) {
-    return message.reply("❌ Use: `!addcargo @cargo @pessoa`");
+  function getCargo(x) {
+    return message.mentions.roles.first() || message.guild.roles.cache.get(x);
   }
 
-  await message.delete().catch(() => {});
+  function getUser(x) {
+    return message.mentions.members.first() || message.guild.members.cache.get(x);
+  }
 
-  try {
-    await usuario.roles.add(cargo.id);
+  // ===== ADD CARGO =====
+  if (cmd === "addcargo") {
+    if (args.length < 2)
+      return message.reply("❌ Use: !addcargo @cargo @pessoa").then(m => setTimeout(() => m.delete(), 3000));
+
+    const cargo = getCargo(args[0]);
+    const pessoa = getUser(args[1]);
+
+    if (!cargo || !pessoa)
+      return message.reply("❌ Cargo ou pessoa inválidos.").then(m => setTimeout(() => m.delete(), 3000));
+
+    if (cargo.position >= message.member.roles.highest.position)
+      return message.reply("❌ Você não pode setar cargo igual ou maior que o seu.")
+        .then(m => setTimeout(() => m.delete(), 3000));
+
+    await pessoa.roles.add(cargo);
 
     const embed = new EmbedBuilder()
-      .setTitle("Família A7")
-      .setColor("#00ff9d")
+      .setTitle("Família A7 - Cargo Setado")
+      .setColor("#00ff99")
       .setThumbnail(message.guild.iconURL())
       .addFields(
-        { name: "Cargo:", value: `${cargo} (${cargo.id})` },
-        { name: "Cargo setado com sucesso no:", value: `${usuario}` },
-        { name: "Quem setou:", value: `${message.author}` }
+        { name: "Cargo:", value: `${cargo}` },
+        { name: "Setado para:", value: `${pessoa}` },
+        { name: "Por:", value: `${message.member}` }
       );
 
-    const msg = await message.channel.send({ embeds: [embed] });
-
-    setTimeout(() => msg.delete().catch(() => {}), 20000);
-
-  } catch (e) {
-    const erro = new EmbedBuilder()
-      .setTitle("Família A7")
-      .setColor("#ff0000")
-      .addFields(
-        { name: "❌ Erro:", value: "Não consegui setar o cargo." }
-      );
-
-    const msg = await message.channel.send({ embeds: [erro] });
-
-    setTimeout(() => msg.delete().catch(() => {}), 20000);
-  }
-});
-
-
-// ======================================================================
-// =====================   COMANDO !removercargo   ======================
-// ======================================================================
-client.on("messageCreate", async message => {
-  if (!message.content.startsWith("!removercargo")) return;
-
-  const args = message.content.split(" ");
-  const cargo = message.mentions.roles.first();
-  const usuario = message.mentions.members.first();
-
-  if (!cargo || !usuario) {
-    return message.reply("❌ Use: `!removercargo @cargo @pessoa`");
+    return message.reply({ embeds: [embed] })
+      .then(m => setTimeout(() => m.delete(), 20000));
   }
 
-  await message.delete().catch(() => {});
+  // ===== REMOVER CARGO =====
+  if (cmd === "removercargo") {
+    if (args.length < 2)
+      return message.reply("❌ Use: !removercargo @cargo @pessoa").then(m => setTimeout(() => m.delete(), 3000));
 
-  try {
-    await usuario.roles.remove(cargo.id);
+    const cargo = getCargo(args[0]);
+    const pessoa = getUser(args[1]);
+
+    if (!cargo || !pessoa)
+      return message.reply("❌ Cargo ou pessoa inválidos.").then(m => setTimeout(() => m.delete(), 3000));
+
+    if (cargo.position >= message.member.roles.highest.position)
+      return message.reply("❌ Você não pode remover cargo igual ou maior que o seu.")
+        .then(m => setTimeout(() => m.delete(), 3000));
+
+    await pessoa.roles.remove(cargo);
 
     const embed = new EmbedBuilder()
-      .setTitle("Família A7")
-      .setColor("#ff6600")
+      .setTitle("Família A7 - Cargo Removido")
+      .setColor("#ff3333")
       .setThumbnail(message.guild.iconURL())
       .addFields(
-        { name: "Cargo Removido:", value: `${cargo} (${cargo.id})` },
-        { name: "Cargo removido do:", value: `${usuario}` },
-        { name: "Quem removeu:", value: `${message.author}` }
+        { name: "Cargo removido:", value: `${cargo}` },
+        { name: "Removido de:", value: `${pessoa}` },
+        { name: "Por:", value: `${message.member}` }
       );
 
-    const msg = await message.channel.send({ embeds: [embed] });
-
-    setTimeout(() => msg.delete().catch(() => {}), 20000);
-
-  } catch (e) {
-    const erro = new EmbedBuilder()
-      .setTitle("Família A7")
-      .setColor("#ff0000")
-      .addFields(
-        { name: "❌ Erro:", value: "Não consegui remover o cargo." }
-      );
-
-    const msg = await message.channel.send({ embeds: [erro] });
-
-    setTimeout(() => msg.delete().catch(() => {}), 20000);
+    return message.reply({ embeds: [embed] })
+      .then(m => setTimeout(() => m.delete(), 20000));
   }
 });
-
 
 // ===================== LOGIN =====================
 client.login(TOKEN);
