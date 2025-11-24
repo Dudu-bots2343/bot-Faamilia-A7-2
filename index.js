@@ -1,13 +1,13 @@
-// ===================== KEEP ALIVE =====================
+// ====================== KEEP ALIVE ======================
 const express = require("express");
 const app = express();
 app.get("/", (req, res) => res.send("Bot ativo!"));
 app.listen(3000, () => console.log("Keep alive rodando!"));
 
-// ===================== DOTENV =====================
+// ====================== DOTENV ==========================
 require("dotenv").config();
 
-// ===================== DISCORD =====================
+// ====================== DISCORD.JS =======================
 const {
   Client,
   GatewayIntentBits,
@@ -19,7 +19,6 @@ const {
   TextInputBuilder,
   TextInputStyle,
   Events,
-  PermissionsBitField,
 } = require("discord.js");
 
 const client = new Client({
@@ -31,15 +30,14 @@ const client = new Client({
   ],
 });
 
-// ===================== ENV =====================
+// ====================== VARIÁVEIS DO .ENV =================
 const CANAL_PEDIR_SET = process.env.CANAL_PEDIR_SET;
 const CANAL_ACEITA_SET = process.env.CANAL_ACEITA_SET;
 const CARGO_APROVADO = process.env.CARGO_APROVADO;
 const CARGO_APROVADO_2 = process.env.CARGO_APROVADO_2;
-const PREFIX = "!"; // caso queira mudar
 const TOKEN = process.env.TOKEN;
 
-// ===================== BOT ONLINE =====================
+// ====================== BOT ONLINE ========================
 client.on("ready", async () => {
   console.log(`Bot ligado como ${client.user.tag}`);
 
@@ -48,11 +46,11 @@ client.on("ready", async () => {
   const embed = new EmbedBuilder()
     .setTitle("Sistema Familia A7")
     .setDescription(
-      "Registro A7.\n\nSolicite Set usando o botão abaixo.\nRegistre-se abaixo."
+      "Registro A7.\n\n Solicite Set , usando os botões abaixo.\n Registre-se Abaixo."
     )
     .addFields({
       name: "📌 Observações",
-      value: "• A resenha aqui é garantida.\n• Não leve a brincadeira a sério.",
+      value: `• A resenha aqui e garantida.\n• Não leve a brincadeira a sério.`,
     })
     .setColor("#f1c40f");
 
@@ -66,8 +64,8 @@ client.on("ready", async () => {
   await canal.send({ embeds: [embed], components: [btn] });
 });
 
-// ===================== ABRIR MODAL =====================
-client.on(Events.InteractionCreate, async interaction => {
+// ====================== ABRIR MODAL ========================
+client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
   if (interaction.customId !== "abrirRegistro") return;
 
@@ -95,8 +93,8 @@ client.on(Events.InteractionCreate, async interaction => {
   await interaction.showModal(modal);
 });
 
-// ===================== RECEBER FORMULÁRIO =====================
-client.on(Events.InteractionCreate, async interaction => {
+// ====================== RECEBER FORM ========================
+client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isModalSubmit()) return;
   if (interaction.customId !== "modalRegistro") return;
 
@@ -115,7 +113,9 @@ client.on(Events.InteractionCreate, async interaction => {
       { name: "ID Informado", value: iduser },
       {
         name: "Conta Criada em",
-        value: `<t:${Math.floor(interaction.user.createdTimestamp / 1000)}:R>`,
+        value: `<t:${Math.floor(
+          interaction.user.createdTimestamp / 1000
+        )}:R>`,
       }
     );
 
@@ -124,7 +124,6 @@ client.on(Events.InteractionCreate, async interaction => {
       .setCustomId(`aprovar_${interaction.user.id}`)
       .setLabel("Aprovar")
       .setStyle(ButtonStyle.Success),
-
     new ButtonBuilder()
       .setCustomId(`negar_${interaction.user.id}`)
       .setLabel("Negar")
@@ -139,8 +138,8 @@ client.on(Events.InteractionCreate, async interaction => {
   });
 });
 
-// ===================== APROVAR / NEGAR =====================
-client.on(Events.InteractionCreate, async interaction => {
+// =================== APROVAR / NEGAR ===================
+client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
 
   const [acao, userId] = interaction.customId.split("_");
@@ -148,10 +147,12 @@ client.on(Events.InteractionCreate, async interaction => {
 
   const membro = await interaction.guild.members.fetch(userId);
 
-  const embed = interaction.message.embeds[0];
-  const nomeInformado = embed.fields.find(f => f.name === "Nome Informado")?.value;
+  const embedOriginal = interaction.message.embeds[0];
 
-  // ========= APROVAR =========
+  const nomeInformado = embedOriginal.fields.find(f => f.name === "Nome Informado")?.value;
+  const idInformado = embedOriginal.fields.find(f => f.name === "ID Informado")?.value;
+
+  // ========== APROVAR ==========
   if (acao === "aprovar") {
     try {
       await membro.setNickname(`A7 ${nomeInformado}`);
@@ -161,121 +162,56 @@ client.on(Events.InteractionCreate, async interaction => {
         CARGO_APROVADO_2,
       ]);
 
-      const aprovadoEmbed = new EmbedBuilder()
+      const embedAprovado = new EmbedBuilder()
+        .setColor("Green")
         .setTitle("Registro Aprovado")
-        .setColor("#00ff88")
-        .setThumbnail(membro.user.displayAvatarURL())
         .addFields(
-          { name: "👤 Usuário", value: `${membro}` },
-          { name: "📛 Nome Informado", value: nomeInformado },
-          { name: "☑ Aprovado por", value: `${interaction.user}` }
+          { name: "👤 Usuário:", value: `${membro}` },
+          { name: "🪪 ID:", value: `${idInformado}` },
+          { name: "📛 Nome Informado:", value: `A7 ${nomeInformado}` },
+          { name: "🧭 Acesso aprovado por:", value: `${interaction.user}` }
         )
-        .setDescription("Aprovado com sucesso!");
+        .setThumbnail(embedOriginal.data.thumbnail?.url || membro.user.displayAvatarURL())
+        .setFooter({ text: "Aprovado com sucesso!" });
 
-      await interaction.reply({ embeds: [aprovadoEmbed] });
+      await interaction.update({
+        embeds: [embedAprovado],
+        components: []
+      });
 
     } catch (e) {
       console.log(e);
-      await interaction.reply({
-        content: "❌ Erro ao aprovar. Permissões insuficientes.",
-        ephemeral: true,
+      return interaction.reply({
+        content: "❌ Erro ao aprovar. Verifique permissões.",
+        ephemeral: true
       });
     }
   }
 
-  // ========= NEGAR =========
+  // ========== NEGAR ==========
   if (acao === "negar") {
     try {
-      await membro.kick("Registro negado.");
+      await membro.kick("Registro negado pelo aprovador.");
 
-      await interaction.reply({
-        content: `❌ Registro negado! O usuário **${membro.user.tag}** foi expulso.`,
+      const embedNegado = new EmbedBuilder()
+        .setColor("Red")
+        .setTitle("Registro Negado")
+        .setDescription(`❌ O usuário **${membro.user.tag}** foi expulso.\nNegado por: ${interaction.user}`)
+        .setThumbnail(membro.user.displayAvatarURL());
+
+      await interaction.update({
+        embeds: [embedNegado],
+        components: []
       });
 
     } catch (e) {
       console.log(e);
-      await interaction.reply({
-        content: "❌ Não consegui expulsar o usuário. Permissões insuficientes.",
-        ephemeral: true,
+      return interaction.reply({
+        content: "❌ Não consegui expulsar o usuário.",
+        ephemeral: true
       });
     }
   }
 });
 
-// ===================== ADDCARGO / REMOVERCARGO =====================
-client.on("messageCreate", async message => {
-  if (!message.guild || message.author.bot) return;
-  if (!message.content.startsWith(PREFIX)) return;
-
-  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
-  const cmd = args.shift().toLowerCase();
-
-  // =================== USE: !addcargo @cargo @pessoa ===================
-  if (cmd === "addcargo") {
-    const cargo = message.mentions.roles.first();
-    const pessoa = message.mentions.members.first();
-
-    if (!cargo || !pessoa) {
-      return message.reply("❌ Use: `!addcargo @cargo @pessoa`").then(msg => {
-        setTimeout(() => msg.delete().catch(() => {}), 3000);
-      });
-    }
-
-    const autor = message.member;
-
-    if (cargo.position >= autor.roles.highest.position)
-      return message.reply("❌ Você não pode setar um cargo igual ou maior que o seu.")
-        .then(msg => setTimeout(() => msg.delete(), 3000));
-
-    await pessoa.roles.add(cargo);
-
-    const embed = new EmbedBuilder()
-      .setTitle("Família A7")
-      .setColor("#00ff99")
-      .setThumbnail(client.user.displayAvatarURL())
-      .addFields(
-        { name: "Cargo:", value: `${cargo}` },
-        { name: "Cargo setado em:", value: `${pessoa}` },
-        { name: "Quem setou:", value: `${autor}` }
-      );
-
-    await message.reply({ embeds: [embed] });
-  }
-
-  // =================== USE: !removercargo @cargo @pessoa ===================
-  if (cmd === "removercargo") {
-    const cargo = message.mentions.roles.first();
-    const pessoa = message.mentions.members.first();
-
-    if (!cargo || !pessoa) {
-      return message.reply("❌ Use: `!removercargo @cargo @pessoa`").then(msg => {
-        setTimeout(() => msg.delete().catch(() => {}), 3000);
-      });
-    }
-
-    const autor = message.member;
-
-    if (cargo.position >= autor.roles.highest.position)
-      return message.reply("❌ Você não pode remover um cargo igual ou maior que o seu.")
-        .then(msg => setTimeout(() => msg.delete(), 3000));
-
-    await pessoa.roles.remove(cargo);
-
-    const embed = new EmbedBuilder()
-      .setTitle("Família A7")
-      .setColor("#ff5555")
-      .setThumbnail(client.user.displayAvatarURL())
-      .addFields(
-        { name: "Cargo removido:", value: `${cargo}` },
-        { name: "Cargo removido de:", value: `${pessoa}` },
-        { name: "Quem removeu:", value: `${autor}` }
-      );
-
-    await message.reply({ embeds: [embed] });
-  }
-});
-
-// ===================== LOGIN =====================
 client.login(TOKEN);
-
-
