@@ -138,7 +138,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   });
 });
 
-// ====================== APROVAR / NEGAR =====================
+// =================== APROVAR / NEGAR ===================
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
 
@@ -147,95 +147,90 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   const membro = await interaction.guild.members.fetch(userId);
 
-  // pegar nome informado
-  const embed = interaction.message.embeds[0];
-  const nomeInformado = embed.fields.find(
-    (f) => f.name === "Nome Informado"
-  )?.value;
+  // pegar embed original
+  const embedOriginal = interaction.message.embeds[0];
 
+  const nomeInformado = embedOriginal.fields.find(f => f.name === "Nome Informado")?.value;
+  const idInformado = embedOriginal.fields.find(f => f.name === "ID")?.value;
+
+  // remover todos os botões
+  const removerBotoes = { components: [] };
+
+  // ========== APROVAR ==========
   if (acao === "aprovar") {
     try {
+      // alterar nick do usuário
       await membro.setNickname(`A7 ${nomeInformado}`);
 
-      await membro.roles.add([CARGO_APROVADO, CARGO_APROVADO_2]);
+      await membro.roles.add([
+        process.env.CARGO_APROVADO,
+        process.env.CARGO_APROVADO_2,
+      ]);
 
-      // remover botões
-      await interaction.message.edit({ components: [] });
+      // criar embed igual ao da imagem
+      const embedAprovado = new EmbedBuilder()
+        .setColor("Green")
+        .setTitle("Registro Aprovado")
+        .addFields(
+          {
+            name: "👤 Usuário:",
+            value: `${membro}`,
+          },
+          {
+            name: "🪪 ID:",
+            value: `${idInformado || "N/A"}`,
+          },
+          {
+            name: "📛 Nome Informado:",
+            value: `A7 ${nomeInformado}`,
+          },
+          {
+            name: "🧭 Acesso aprovado por:",
+            value: `${interaction.user}`,
+          }
+        )
+        .setThumbnail(embedOriginal.thumbnail?.url || membro.user.displayAvatarURL())
+        .setFooter({ text: "Aprovado com sucesso!" });
 
-      await interaction.reply({
-        content:
-          `✔ Registro aprovado!\n` +
-          `• Nick alterado para **A7 ${nomeInformado}**\n` +
-          `• Cargos aplicados.\n` +
-          `• Acesso liberado para ${membro}.`,
+      await interaction.update({
+        embeds: [embedAprovado],
+        components: [] // remove botões
       });
-    } catch (err) {
-      console.log(err);
+
+    } catch (e) {
+      console.log(e);
       return interaction.reply({
         content: "❌ Erro ao aprovar. Verifique permissões.",
-        ephemeral: true,
+        ephemeral: true
       });
     }
   }
 
+  // ========== NEGAR ==========
   if (acao === "negar") {
     try {
       await membro.kick("Registro negado pelo aprovador.");
 
-      await interaction.message.edit({ components: [] });
+      const embedNegado = new EmbedBuilder()
+        .setColor("Red")
+        .setTitle("Registro Negado")
+        .setDescription(`❌ O usuário **${membro.user.tag}** foi expulso.\nNegado por: ${interaction.user}`)
+        .setThumbnail(membro.user.displayAvatarURL());
 
-      await interaction.reply({
-        content:
-          `❌ Registro negado!\n` +
-          `• O usuário **${membro.user.tag}** foi expulso do servidor.`,
+      await interaction.update({
+        embeds: [embedNegado],
+        components: [] // remove botões
       });
-    } catch (err) {
-      console.log(err);
+
+    } catch (e) {
+      console.log(e);
       return interaction.reply({
-        content: "❌ Não consegui expulsar. Permissão insuficiente.",
-        ephemeral: true,
+        content: "❌ Não consegui expulsar o usuário.",
+        ephemeral: true
       });
     }
   }
 });
 
-// ====================== COMANDO !addcargo ======================
-client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
-  if (!message.content.toLowerCase().startsWith("!addcargo")) return;
-
-  if (!message.member.permissions.has("ManageRoles"))
-    return message.reply("❌ Você não tem permissão para isso.");
-
-  const args = message.content.split(" ").slice(1);
-  const cargo = message.mentions.roles.first();
-  const targetId = args[1];
-
-  if (!cargo)
-    return message.reply("❌ Use: `!addcargo @cargo 123456789`");
-
-  if (!targetId)
-    return message.reply("❌ Você deve informar o **ID do usuário**.");
-
-  let membro;
-  try {
-    membro = await message.guild.members.fetch(targetId);
-  } catch {
-    return message.reply("❌ Não encontrei ninguém com esse ID.");
-  }
-
-  try {
-    await membro.roles.add(cargo.id);
-
-    message.reply(
-      `✅ Cargo **${cargo.name}** aplicado ao usuário **${membro.user.tag}**.`
-    );
-  } catch (err) {
-    console.log(err);
-    message.reply(
-      "❌ O bot não conseguiu aplicar o cargo. Verifique a hierarquia."
-    );
-  }
-});
-
 client.login(TOKEN);
+
