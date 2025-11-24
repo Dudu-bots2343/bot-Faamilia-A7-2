@@ -199,88 +199,154 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// ======================= COMANDO !addcargo ==========================
+// ======================= COMANDO !addcargo / !removercargo ==========================
 client.on("messageCreate", async (message) => {
-    if (!message.content.startsWith("!addcargo")) return;
     if (message.author.bot) return;
 
-    // Apaga a mensagem enviada pelo usuário
-    await message.delete().catch(() => {});
+    const prefix = "!";
 
-    // Quebra a mensagem
-    const args = message.content.split(" ");
-
-    // Verifica se mencionou o cargo e a pessoa
-    const cargo = message.mentions.roles.first();
-    const membro = message.mentions.users.last();
-
-    if (!cargo || !membro) {
-        const erroEmbed = new EmbedBuilder()
-            .setTitle("Adicionar Cargo")
-            .setColor("#e74c3c") // Vermelho
-            .setThumbnail(message.guild.iconURL())
-            .setDescription("❌ **Use:** `!addcargo @cargo @pessoa`");
-
-        const msg = await message.channel.send({ embeds: [erroEmbed] });
-        setTimeout(() => msg.delete().catch(() => {}), 20000);
-        return;
+    // Remove comando do chat
+    if (message.content.startsWith(prefix)) {
+        message.delete().catch(() => {});
     }
 
-    // Buscar membro no servidor
-    const memberGuild = await message.guild.members.fetch(membro.id).catch(() => null);
+    // ----------- ADD CARGO -----------
+    if (message.content.startsWith("!addcargo")) {
 
-    if (!memberGuild) {
-        const erroEmbed = new EmbedBuilder()
-            .setTitle("Adicionar Cargo")
-            .setColor("#e74c3c")
-            .setThumbnail(message.guild.iconURL())
-            .setDescription("❌ **Usuário não encontrado no servidor.**");
+        const cargo = message.mentions.roles.first();
+        const membro = message.mentions.users.last();
 
-        const msg = await message.channel.send({ embeds: [erroEmbed] });
-        setTimeout(() => msg.delete().catch(() => {}), 20000);
-        return;
+        if (!cargo || !membro) {
+            const erroEmbed = new EmbedBuilder()
+                .setTitle("Família A7")
+                .setColor("#e74c3c")
+                .setThumbnail(message.guild.iconURL())
+                .addFields({
+                    name: "❌ Erro",
+                    value: "Use: `!addcargo @cargo @pessoa`"
+                });
+
+            const msg = await message.channel.send({ embeds: [erroEmbed] });
+            return setTimeout(() => msg.delete().catch(() => {}), 20000);
+        }
+
+        const memberGuild = await message.guild.members.fetch(membro.id).catch(() => null);
+
+        if (!memberGuild) {
+            const erroEmbed = new EmbedBuilder()
+                .setTitle("Família A7")
+                .setColor("#e74c3c")
+                .setThumbnail(message.guild.iconURL())
+                .addFields({
+                    name: "❌ Erro",
+                    value: "Usuário não encontrado no servidor."
+                });
+
+            const msg = await message.channel.send({ embeds: [erroEmbed] });
+            return setTimeout(() => msg.delete().catch(() => {}), 20000);
+        }
+
+        try {
+            await memberGuild.roles.add(cargo.id);
+
+            const sucessoEmbed = new EmbedBuilder()
+                .setTitle("Família A7")
+                .setColor("#3498db")
+                .setThumbnail(message.guild.iconURL())
+                .addFields(
+                    { name: "Cargo:", value: `${cargo} \n(${cargo.id})` },
+                    { name: "Cargo setado com sucesso no:", value: `${memberGuild.user}` },
+                    { name: "Quem setou:", value: `${message.author}` }
+                );
+
+            const msg = await message.channel.send({ embeds: [sucessoEmbed] });
+            return setTimeout(() => msg.delete().catch(() => {}), 20000);
+
+        } catch (err) {
+            const erroEmbed = new EmbedBuilder()
+                .setTitle("Família A7")
+                .setColor("#e74c3c")
+                .setThumbnail(message.guild.iconURL())
+                .addFields({
+                    name: "❌ Erro",
+                    value: "Não consegui aplicar o cargo. Verifique permissões."
+                });
+
+            const msg = await message.channel.send({ embeds: [erroEmbed] });
+            return setTimeout(() => msg.delete().catch(() => {}), 20000);
+        }
     }
 
-    // Tenta aplicar o cargo
-    try {
-        await memberGuild.roles.add(cargo.id);
+    // ----------- REMOVER CARGO -----------
+    if (message.content.startsWith("!removercargo")) {
 
-        const sucessoEmbed = new EmbedBuilder()
-            .setTitle("Família A7")
-            .setColor("#3498db") // Azul bonito
-            .setThumbnail(message.guild.iconURL())
-            .addFields(
-                {
-                    name: "Cargo:",
-                    value: `${cargo} \n(${cargo.id})`,
-                },
-                {
-                    name: "Cargo setado com sucesso no:",
-                    value: `${memberGuild.user.tag}`,
-                },
-                {
-                    name: "Quem setou:",
-                    value: `${message.author}`,
-                }
-            );
+        const cargo = message.mentions.roles.first();
+        const membro = message.mentions.users.last();
 
-        const msg = await message.channel.send({ embeds: [sucessoEmbed] });
+        if (!cargo || !membro) {
+            const erroEmbed = new EmbedBuilder()
+                .setTitle("Família A7")
+                .setColor("#e74c3c")
+                .setThumbnail(message.guild.iconURL())
+                .addFields({
+                    name: "❌ Erro",
+                    value: "Use: `!removercargo @cargo @pessoa`"
+                });
 
-        // apagar após 20 segundos
-        setTimeout(() => msg.delete().catch(() => {}), 20000);
+            const msg = await message.channel.send({ embeds: [erroEmbed] });
+            return setTimeout(() => msg.delete().catch(() => {}), 20000);
+        }
 
-    } catch (err) {
-        const erroEmbed = new EmbedBuilder()
-            .setTitle("Família A7")
-            .setColor("#e74c3c")
-            .setThumbnail(message.guild.iconURL())
-            .setDescription("❌ **Erro ao aplicar o cargo.**\nVerifique permissões.");
+        const memberGuild = await message.guild.members.fetch(membro.id).catch(() => null);
 
-        const msg = await message.channel.send({ embeds: [erroEmbed] });
-        setTimeout(() => msg.delete().catch(() => {}), 20000);
+        if (!memberGuild) {
+            const erroEmbed = new EmbedBuilder()
+                .setTitle("Família A7")
+                .setColor("#e74c3c")
+                .setThumbnail(message.guild.iconURL())
+                .addFields({
+                    name: "❌ Erro",
+                    value: "Usuário não encontrado no servidor."
+                });
+
+            const msg = await message.channel.send({ embeds: [erroEmbed] });
+            return setTimeout(() => msg.delete().catch(() => {}), 20000);
+        }
+
+        try {
+            await memberGuild.roles.remove(cargo.id);
+
+            const sucessoEmbed = new EmbedBuilder()
+                .setTitle("Família A7")
+                .setColor("#3498db")
+                .setThumbnail(message.guild.iconURL())
+                .addFields(
+                    { name: "Cargo Removido:", value: `${cargo} \n(${cargo.id})` },
+                    { name: "Cargo removido do:", value: `${memberGuild.user}` },
+                    { name: "Quem removeu:", value: `${message.author}` }
+                );
+
+            const msg = await message.channel.send({ embeds: [sucessoEmbed] });
+            return setTimeout(() => msg.delete().catch(() => {}), 20000);
+
+        } catch (err) {
+            const erroEmbed = new EmbedBuilder()
+                .setTitle("Família A7")
+                .setColor("#e74c3c")
+                .setThumbnail(message.guild.iconURL())
+                .addFields({
+                    name: "❌ Erro",
+                    value: "Não consegui remover o cargo. Verifique permissões."
+                });
+
+            const msg = await message.channel.send({ embeds: [erroEmbed] });
+            return setTimeout(() => msg.delete().catch(() => {}), 20000);
+        }
     }
 });
 
+
 client.login(TOKEN);
+
 
 
