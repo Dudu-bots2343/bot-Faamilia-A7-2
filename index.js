@@ -1,3 +1,5 @@
+// Código atualizado com mensagens de cargo adicionadas/removidas e registro aprovadas no estilo dos embeds enviados.
+
 const { Client, GatewayIntentBits, Partials, EmbedBuilder } = require("discord.js");
 require("dotenv").config();
 
@@ -15,7 +17,6 @@ client.on("ready", () => {
     console.log(`Bot online como ${client.user.tag}`);
 });
 
-// Função para extrair cargo e usuário de várias formas
 function extractTargets(message, args) {
     let cargo =
         message.mentions.roles.first() ||
@@ -28,16 +29,12 @@ function extractTargets(message, args) {
     return { cargo, usuario };
 }
 
-// Função para checar hierarquia
 function canModify(message, cargo, usuario) {
     const autor = message.member;
 
     if (!cargo || !usuario) return false;
 
-    // Autor NÃO pode setar cargo igual ou maior que o dele
     if (cargo.position >= autor.roles.highest.position) return false;
-
-    // Autor NÃO pode modificar usuário com cargo igual ou maior
     if (usuario.roles.highest.position >= autor.roles.highest.position) return false;
 
     return true;
@@ -52,98 +49,93 @@ client.on("messageCreate", async (message) => {
     const args = message.content.slice(prefix.length).trim().split(/ +/g);
     const cmd = args.shift().toLowerCase();
 
-    // ===========================
-    //  ADDCARGO
-    // ===========================
+    // ADDCARGO
     if (cmd === "addcargo") {
         const { cargo, usuario } = extractTargets(message, args);
-
         await message.delete().catch(() => {});
 
         if (!cargo || !usuario) {
             const erro = new EmbedBuilder()
                 .setTitle("❌ Erro")
-                .setDescription("Formato inválido.\nUse: `!addcargo @cargo @pessoa` ou variações.")
+                .setDescription("Use: `!addcargo @cargo @pessoa`")
                 .setColor("Red")
                 .setThumbnail(message.guild.iconURL());
 
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
+            return message.channel.send({ embeds: [erro] })
+                .then(msg => setTimeout(() => msg.delete().catch(()=>{}), 20000));
         }
 
-        // HIERARQUIA
         if (!canModify(message, cargo, usuario)) {
             const hierarquia = new EmbedBuilder()
                 .setTitle("⚠️ Permissão Negada")
-                .setDescription("Você **não pode setar esse cargo**.\nEle é igual ou maior que o seu, ou a pessoa tem cargo maior/equal ao seu.")
+                .setDescription("Cargo igual/maior que o seu ou pessoa com cargo maior.")
                 .setColor("Red")
                 .setThumbnail(message.guild.iconURL());
 
-            return message.channel.send({ embeds: [hierarquia] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
+            return message.channel.send({ embeds: [hierarquia] })
+                .then(msg => setTimeout(() => msg.delete().catch(()=>{}), 20000));
         }
 
         await usuario.roles.add(cargo).catch(() => {});
 
+        // Embed estilo da imagem
         const ok = new EmbedBuilder()
-            .setTitle("✅ Cargo Setado")
-            .setDescription(`O cargo **${cargo.name}** foi adicionado ao usuário **${usuario.user.tag}**.`)
+            .setTitle("Família A7")
             .setColor("#00ff99")
-            .setThumbnail(message.guild.iconURL());
+            .setThumbnail("https://i.imgur.com/3l7YF3h.png")
+            .addFields(
+                { name: "Cargo:", value: `@${cargo.name} (${cargo.id})` },
+                { name: "Cargo setado com sucesso no:", value: `${usuario.user.username}` },
+                { name: "Quem setou:", value: `${message.member}` }
+            );
 
-        return message.channel.send({ embeds: [ok] }).then(msg => {
-            setTimeout(() => msg.delete().catch(()=>{}), 20000);
-        });
+        return message.channel.send({ embeds: [ok] })
+            .then(msg => setTimeout(() => msg.delete().catch(()=>{}), 20000));
     }
 
-    // ===========================
     // REMOVERCARGO
-    // ===========================
     if (cmd === "removercargo") {
         const { cargo, usuario } = extractTargets(message, args);
-
         await message.delete().catch(() => {});
 
         if (!cargo || !usuario) {
             const erro = new EmbedBuilder()
                 .setTitle("❌ Erro")
-                .setDescription("Formato inválido.\nUse: `!removercargo @cargo @pessoa` ou variações.")
+                .setDescription("Use: `!removercargo @cargo @pessoa`")
                 .setColor("Red")
                 .setThumbnail(message.guild.iconURL());
 
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
+            return message.channel.send({ embeds: [erro] })
+                .then(msg => setTimeout(() => msg.delete().catch(()=>{}), 20000));
         }
 
-        // HIERARQUIA
         if (!canModify(message, cargo, usuario)) {
             const hierarquia = new EmbedBuilder()
                 .setTitle("⚠️ Permissão Negada")
-                .setDescription("Você **não pode remover esse cargo**.\nEle é igual ou maior que o seu, ou a pessoa tem cargo maior/iqual ao seu.")
+                .setDescription("Cargo igual/maior que o seu ou pessoa com cargo maior.")
                 .setColor("Red")
                 .setThumbnail(message.guild.iconURL());
 
-            return message.channel.send({ embeds: [hierarquia] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
+            return message.channel.send({ embeds: [hierarquia] })
+                .then(msg => setTimeout(() => msg.delete().catch(()=>{}), 20000));
         }
 
         await usuario.roles.remove(cargo).catch(() => {});
 
+        // Embed estilo da imagem enviada
         const ok = new EmbedBuilder()
-            .setTitle("🗑️ Cargo Removido")
-            .setDescription(`O cargo **${cargo.name}** foi removido do usuário **${usuario.user.tag}**.`)
+            .setTitle("Família A7")
             .setColor("#ff4444")
-            .setThumbnail(message.guild.iconURL());
+            .setThumbnail("https://i.imgur.com/3l7YF3h.png")
+            .addFields(
+                { name: "Cargo Removido:", value: `@${cargo.name} (${cargo.id})` },
+                { name: "Cargo removido do:", value: `${usuario}` },
+                { name: "Quem removeu:", value: `${message.member}` }
+            );
 
-        return message.channel.send({ embeds: [ok] }).then(msg => {
-            setTimeout(() => msg.delete().catch(()=>{}), 20000);
-        });
+        return message.channel.send({ embeds: [ok] })
+            .then(msg => setTimeout(() => msg.delete().catch(()=>{}), 20000));
     }
 });
 
 client.login(process.env.TOKEN);
-
