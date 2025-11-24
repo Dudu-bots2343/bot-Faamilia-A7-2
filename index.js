@@ -213,5 +213,94 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 });
+---------------------removercargo---------------------------
+if (cmd === "removercargo") {
+    const { cargo, usuario } = extractTargets(message, args);
+
+    await message.delete().catch(() => {});
+
+    if (!cargo || !usuario) {
+        const erro = new EmbedBuilder()
+            .setTitle("❌ Erro")
+            .setDescription("Use: `!removercargo @cargo @pessoa` ou variações.")
+            .setColor("Red")
+            .setThumbnail(message.guild.iconURL());
+
+        return message.channel.send({ embeds: [erro] }).then(msg => {
+            setTimeout(() => msg.delete().catch(()=>{}), 20000);
+        });
+    }
+
+    if (!canModify(message, cargo, usuario)) {
+        const erro = new EmbedBuilder()
+            .setTitle("⚠️ Permissão Negada")
+            .setDescription("Você **não pode remover esse cargo**.\nCargo igual/maior que o seu ou usuário com cargo maior.")
+            .setColor("Red")
+            .setThumbnail(message.guild.iconURL());
+
+        return message.channel.send({ embeds: [erro] }).then(msg => {
+            setTimeout(() => msg.delete().catch(()=>{}), 20000);
+        });
+    }
+
+    await usuario.roles.remove(cargo).catch(() => {});
+
+    const embed = new EmbedBuilder()
+        .setTitle("Família A7")
+        .setColor("#ff9900")
+        .setThumbnail(message.guild.iconURL())
+        .addFields(
+            { name: "Cargo Removido:", value: `${cargo}\n(${cargo.id})` },
+            { name: "Cargo removido do:", value: `${usuario}` },
+            { name: "Quem removeu:", value: `${message.author}` }
+        );
+
+    return message.channel.send({ embeds: [embed] });
+}
+------------------------addcargo------------------------------
+if (cmd === "addcargo") {
+    const { cargo, usuario } = extractTargets(message, args);
+
+    await message.delete().catch(() => {});
+
+    if (!cargo || !usuario) {
+        const erro = new EmbedBuilder()
+            .setTitle("❌ Erro")
+            .setDescription("Use: `!addcargo @cargo @pessoa` ou variações.")
+            .setColor("Red")
+            .setThumbnail(message.guild.iconURL());
+
+        return message.channel.send({ embeds: [erro] }).then(msg => {
+            setTimeout(() => msg.delete().catch(()=>{}), 20000);
+        });
+    }
+
+    if (!canModify(message, cargo, usuario)) {
+        const erro = new EmbedBuilder()
+            .setTitle("⚠️ Permissão Negada")
+            .setDescription("Você **não pode setar esse cargo**.\nCargo igual/maior que o seu ou usuário com cargo maior.")
+            .setColor("Red")
+            .setThumbnail(message.guild.iconURL());
+
+        return message.channel.send({ embeds: [erro] }).then(msg => {
+            setTimeout(() => msg.delete().catch(()=>{}), 20000);
+        });
+    }
+
+    await usuario.roles.add(cargo).catch(() => {});
+
+    const embed = new EmbedBuilder()
+        .setTitle("Família A7")
+        .setColor("#00ff99")
+        .setThumbnail(message.guild.iconURL())
+        .addFields(
+            { name: "Cargo:", value: `${cargo}\n(${cargo.id})` },
+            { name: "Cargo setado com sucesso no:", value: `${usuario.user.username}_${usuario.user.discriminator}` },
+            { name: "Quem setou:", value: `${message.author}` }
+        );
+
+    return message.channel.send({ embeds: [embed] });
+}
 
 client.login(TOKEN);
+
