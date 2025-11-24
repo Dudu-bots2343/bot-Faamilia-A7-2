@@ -199,43 +199,61 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// ====================== COMANDO !addcargo ======================
+// ====================== COMANDO !addcargo ==========================
 client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
-  if (!message.content.toLowerCase().startsWith("!addcargo")) return;
-
+  if (!message.content.startsWith("!addcargo")) return;
   if (!message.member.permissions.has("ManageRoles"))
-    return message.reply("❌ Você não tem permissão para isso.");
+    return message.reply("❌ Você não tem permissão para usar esse comando.");
 
   const args = message.content.split(" ").slice(1);
-  const cargo = message.mentions.roles.first();
-  const targetId = args[1];
+  const cargo = message.mentions.roles.first() || message.guild.roles.cache.get(args[0]);
+  const userId = args[1];
 
   if (!cargo)
-    return message.reply("❌ Use: `!addcargo @cargo 123456789`");
+    return message.reply("❌ Mencione um cargo válido.\nEx: `!addcargo @cargo 1234567890123`");
 
-  if (!targetId)
-    return message.reply("❌ Você deve informar o **ID do usuário**.");
+  if (!userId)
+    return message.reply("❌ Informe o **ID do usuário**.");
 
-  let membro;
-  try {
-    membro = await message.guild.members.fetch(targetId);
-  } catch {
-    return message.reply("❌ Não encontrei ninguém com esse ID.");
-  }
+  const membro = await message.guild.members.fetch(userId).catch(() => null);
+
+  if (!membro)
+    return message.reply("❌ Não encontrei um usuário com esse ID.");
 
   try {
     await membro.roles.add(cargo.id);
 
-    message.reply(
-      `✅ Cargo **${cargo.name}** aplicado ao usuário **${membro.user.tag}**.`
-    );
-  } catch (err) {
-    console.log(err);
-    message.reply(
-      "❌ O bot não conseguiu aplicar o cargo. Verifique a hierarquia."
-    );
+    // Criar embed estilo do seu exemplo
+    const embed = {
+      color: 0xff0000, // vermelho
+      title: "Família A7",
+      fields: [
+        {
+          name: "Cargo:",
+          value: `${cargo} \n(${cargo.id})`,
+        },
+        {
+          name: "Cargo setado com sucesso no:",
+          value: `${membro.user.username}`,
+        },
+        {
+          name: "Quem setou:",
+          value: `${message.member}`,
+        },
+      ],
+      thumbnail: {
+        url: "https://cdn-icons-png.flaticon.com/512/1828/1828640.png", // ícone de coroa igual estilo da imagem
+      },
+    };
+
+    await message.reply({ embeds: [embed] });
+
+  } catch (e) {
+    console.log(e);
+    return message.reply("❌ Não consegui adicionar o cargo. Verifique permissões.");
   }
 });
 
+
 client.login(TOKEN);
+
