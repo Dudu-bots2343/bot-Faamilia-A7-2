@@ -122,7 +122,7 @@ client.on("messageCreate", async (message) => {
         if (!canModify(message, cargo, usuario)) {
             const hierarquia = new EmbedBuilder()
                 .setTitle("⚠️ Permissão Negada")
-                .setDescription("Você **não pode remover esse cargo**.\nEle é igual ou maior que o seu, ou a pessoa tem cargo maior/equal ao seu.")
+                .setDescription("Você **não pode remover esse cargo**.\nEle é igual ou maior que o seu, ou a pessoa tem cargo maior/iqual ao seu.")
                 .setColor("Red")
                 .setThumbnail(message.guild.iconURL());
 
@@ -146,3 +146,4 @@ client.on("messageCreate", async (message) => {
 });
 
 client.login(process.env.TOKEN);
+
