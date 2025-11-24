@@ -147,54 +147,36 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   const membro = await interaction.guild.members.fetch(userId);
 
-  // pegar embed original
   const embedOriginal = interaction.message.embeds[0];
 
   const nomeInformado = embedOriginal.fields.find(f => f.name === "Nome Informado")?.value;
-  const idInformado = embedOriginal.fields.find(f => f.name === "ID")?.value;
-
-  // remover todos os botões
-  const removerBotoes = { components: [] };
+  const idInformado = embedOriginal.fields.find(f => f.name === "ID Informado")?.value;
 
   // ========== APROVAR ==========
   if (acao === "aprovar") {
     try {
-      // alterar nick do usuário
       await membro.setNickname(`A7 ${nomeInformado}`);
 
       await membro.roles.add([
-        process.env.CARGO_APROVADO,
-        process.env.CARGO_APROVADO_2,
+        CARGO_APROVADO,
+        CARGO_APROVADO_2,
       ]);
 
-      // criar embed igual ao da imagem
       const embedAprovado = new EmbedBuilder()
         .setColor("Green")
         .setTitle("Registro Aprovado")
         .addFields(
-          {
-            name: "👤 Usuário:",
-            value: `${membro}`,
-          },
-          {
-            name: "🪪 ID:",
-            value: `${idInformado || "N/A"}`,
-          },
-          {
-            name: "📛 Nome Informado:",
-            value: `A7 ${nomeInformado}`,
-          },
-          {
-            name: "🧭 Acesso aprovado por:",
-            value: `${interaction.user}`,
-          }
+          { name: "👤 Usuário:", value: `${membro}` },
+          { name: "🪪 ID:", value: `${idInformado}` },
+          { name: "📛 Nome Informado:", value: `A7 ${nomeInformado}` },
+          { name: "🧭 Acesso aprovado por:", value: `${interaction.user}` }
         )
-        .setThumbnail(embedOriginal.thumbnail?.url || membro.user.displayAvatarURL())
+        .setThumbnail(embedOriginal.data.thumbnail?.url || membro.user.displayAvatarURL())
         .setFooter({ text: "Aprovado com sucesso!" });
 
       await interaction.update({
         embeds: [embedAprovado],
-        components: [] // remove botões
+        components: []
       });
 
     } catch (e) {
@@ -219,7 +201,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       await interaction.update({
         embeds: [embedNegado],
-        components: [] // remove botões
+        components: []
       });
 
     } catch (e) {
@@ -233,4 +215,3 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 client.login(TOKEN);
-
