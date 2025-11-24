@@ -1,34 +1,31 @@
 // ===================== KEEP ALIVE =====================
-const express = require("express");
-const app = express();
 app.get("/", (req, res) => res.send("Bot ativo!"));
 app.listen(3000, () => console.log("Keep alive rodando!"));
 
 // ===================== DOTENV =====================
 require("dotenv").config();
 
-// ===================== DISCORD =====================
+// ===================== DISCORD BOT =====================
 const {
-  Client,
-  GatewayIntentBits,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  Events,
-  PermissionsBitField,
+    Client,
+    GatewayIntentBits,
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    Events
 } = require("discord.js");
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ],
 });
 
 // ===================== ENV =====================
@@ -36,321 +33,226 @@ const CANAL_PEDIR_SET = process.env.CANAL_PEDIR_SET;
 const CANAL_ACEITA_SET = process.env.CANAL_ACEITA_SET;
 const CARGO_APROVADO = process.env.CARGO_APROVADO;
 const CARGO_APROVADO_2 = process.env.CARGO_APROVADO_2;
-const PREFIX = "!"; // caso queira mudar
 const TOKEN = process.env.TOKEN;
+const PREFIX = "!";
 
 // ===================== BOT ONLINE =====================
 client.on("ready", async () => {
-  console.log(`Bot ligado como ${client.user.tag}`);
+    console.log(`Bot ligado como ${client.user.tag}`);
 
-  const canal = await client.channels.fetch(CANAL_PEDIR_SET);
+    const canal = await client.channels.fetch(CANAL_PEDIR_SET);
 
-  const embed = new EmbedBuilder()
-    .setTitle("Sistema Familia A7")
-    .setDescription(
-      "Registro A7.\n\nSolicite Set usando o botão abaixo.\nRegistre-se abaixo."
-    )
-    .addFields({
-      name: "📌 Observações",
-      value: "• A resenha aqui é garantida.\n• Não leve a brincadeira a sério.",
-    })
-    .setColor("#f1c40f");
+    const embed = new EmbedBuilder()
+        .setTitle("Sistema Familia A7")
+        .setDescription(
+            "Registro A7.\n\nSolicite Set usando os botões abaixo.\nRegistre-se abaixo."
+        )
+        .addFields({
+            name: "📌 Observações",
+            value: "• A resenha aqui é garantida.\n• Não leve a brincadeira a sério.",
+        })
+        .setColor("#f1c40f");
 
-  const btn = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("abrirRegistro")
-      .setLabel("Registro")
-      .setStyle(ButtonStyle.Primary)
-  );
+    const btn = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("abrirRegistro")
+            .setLabel("Registro")
+            .setStyle(ButtonStyle.Primary)
+    );
 
-  await canal.send({ embeds: [embed], components: [btn] });
+    await canal.send({ embeds: [embed], components: [btn] });
 });
 
 // ===================== ABRIR MODAL =====================
 client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isButton()) return;
-  if (interaction.customId !== "abrirRegistro") return;
+    if (!interaction.isButton()) return;
+    if (interaction.customId !== "abrirRegistro") return;
 
-  const modal = new ModalBuilder()
-    .setCustomId("modalRegistro")
-    .setTitle("Solicitação de Set");
+    const modal = new ModalBuilder()
+        .setCustomId("modalRegistro")
+        .setTitle("Solicitação de Set");
 
-  const nome = new TextInputBuilder()
-    .setCustomId("nome")
-    .setLabel("Seu nome *")
-    .setRequired(true)
-    .setStyle(TextInputStyle.Short);
+    const nome = new TextInputBuilder()
+        .setCustomId("nome")
+        .setLabel("Seu nome *")
+        .setRequired(true)
+        .setStyle(TextInputStyle.Short);
 
-  const id = new TextInputBuilder()
-    .setCustomId("iduser")
-    .setLabel("Seu ID *")
-    .setRequired(true)
-    .setStyle(TextInputStyle.Short);
+    const id = new TextInputBuilder()
+        .setCustomId("iduser")
+        .setLabel("Seu ID *")
+        .setRequired(true)
+        .setStyle(TextInputStyle.Short);
 
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(nome),
-    new ActionRowBuilder().addComponents(id)
-  );
+    modal.addComponents(
+        new ActionRowBuilder().addComponents(nome),
+        new ActionRowBuilder().addComponents(id)
+    );
 
-  await interaction.showModal(modal);
+    await interaction.showModal(modal);
 });
 
 // ===================== RECEBER FORMULÁRIO =====================
 client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isModalSubmit()) return;
-  if (interaction.customId !== "modalRegistro") return;
+    if (!interaction.isModalSubmit()) return;
+    if (interaction.customId !== "modalRegistro") return;
 
-  const nome = interaction.fields.getTextInputValue("nome");
-  const iduser = interaction.fields.getTextInputValue("iduser");
+    const nome = interaction.fields.getTextInputValue("nome");
+    const iduser = interaction.fields.getTextInputValue("iduser");
 
-  const canal = await client.channels.fetch(CANAL_ACEITA_SET);
+    const canal = await client.channels.fetch(CANAL_ACEITA_SET);
 
-  const embed = new EmbedBuilder()
-    .setTitle("Novo Pedido de Registro")
-    .setColor("#3498db")
-    .setThumbnail(interaction.user.displayAvatarURL())
-    .addFields(
-      { name: "Usuário", value: `${interaction.user}` },
-      { name: "Nome Informado", value: nome },
-      { name: "ID Informado", value: iduser },
-      {
-        name: "Conta Criada em",
-        value: `<t:${Math.floor(interaction.user.createdTimestamp / 1000)}:R>`,
-      }
+    const embed = new EmbedBuilder()
+        .setTitle("Novo Pedido de Registro")
+        .setColor("#3498db")
+        .setThumbnail(interaction.user.displayAvatarURL())
+        .addFields(
+            { name: "Usuário", value: `${interaction.user}` },
+            { name: "Nome Informado", value: nome },
+            { name: "ID Informado", value: iduser },
+            {
+                name: "Conta Criada em",
+                value: `<t:${Math.floor(interaction.user.createdTimestamp / 1000)}:R>`,
+            }
+        );
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`aprovar_${interaction.user.id}`)
+            .setLabel("Aprovar")
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId(`negar_${interaction.user.id}`)
+            .setLabel("Negar")
+            .setStyle(ButtonStyle.Danger)
     );
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`aprovar_${interaction.user.id}`)
-      .setLabel("Aprovar")
-      .setStyle(ButtonStyle.Success),
+    await canal.send({ embeds: [embed], components: [row] });
 
-    new ButtonBuilder()
-      .setCustomId(`negar_${interaction.user.id}`)
-      .setLabel("Negar")
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  await canal.send({ embeds: [embed], components: [row] });
-
-  await interaction.reply({
-    content: "Seu pedido foi enviado!",
-    ephemeral: true,
-  });
+    await interaction.reply({ content: "Seu pedido foi enviado!", ephemeral: true });
 });
 
 // ===================== APROVAR / NEGAR =====================
 client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isButton()) return;
+    if (!interaction.isButton()) return;
 
-  const [acao, userId] = interaction.customId.split("_");
-  if (!["aprovar", "negar"].includes(acao)) return;
+    const [acao, userId] = interaction.customId.split("_");
 
-  const membro = await interaction.guild.members.fetch(userId);
+    if (!["aprovar", "negar"].includes(acao)) return;
 
-  const embed = interaction.message.embeds[0];
-  const nomeInformado = embed.fields.find(f => f.name === "Nome Informado")?.value;
+    const membro = await interaction.guild.members.fetch(userId);
+    const embed = interaction.message.embeds[0];
+    const nomeInformado = embed.fields.find(f => f.name === "Nome Informado")?.value;
 
-  // ========= APROVAR =========
-  if (acao === "aprovar") {
-    try {
-      await membro.setNickname(`A7 ${nomeInformado}`);
+    // ===== APROVAR =====
+    if (acao === "aprovar") {
+        try {
+            await membro.setNickname(`A7 ${nomeInformado}`);
+            await membro.roles.add([
+                CARGO_APROVADO,
+                CARGO_APROVADO_2,
+            ]);
 
-      await membro.roles.add([
-        CARGO_APROVADO,
-        CARGO_APROVADO_2,
-      ]);
+            const aprovadoEmbed = new EmbedBuilder()
+                .setTitle("SET APROVADO")
+                .setColor("#00ff99")
+                .setThumbnail(interaction.guild.iconURL())
+                .addFields(
+                    { name: "Usuário:", value: `${membro}` },
+                    { name: "Novo Nick:", value: `A7 ${nomeInformado}` },
+                    { name: "Aprovado por:", value: `${interaction.user}` }
+                );
 
-      const aprovadoEmbed = new EmbedBuilder()
-        .setTitle("Registro Aprovado")
-        .setColor("#00ff88")
-        .setThumbnail(membro.user.displayAvatarURL())
-        .addFields(
-          { name: "👤 Usuário", value: `${membro}` },
-          { name: "📛 Nome Informado", value: nomeInformado },
-          { name: "☑ Aprovado por", value: `${interaction.user}` }
-        )
-        .setDescription("Aprovado com sucesso!");
+            await interaction.update({ embeds: [aprovadoEmbed], components: [] });
 
-      await interaction.reply({ embeds: [aprovadoEmbed] });
-
-    } catch (e) {
-      console.log(e);
-      await interaction.reply({
-        content: "❌ Erro ao aprovar. Permissões insuficientes.",
-        ephemeral: true,
-      });
+        } catch (e) {
+            await interaction.reply({
+                content: "❌ Erro ao aprovar. Permissões insuficientes.",
+                ephemeral: true,
+            });
+        }
     }
-  }
 
-  // ========= NEGAR =========
-  if (acao === "negar") {
-    try {
-      await membro.kick("Registro negado.");
+    // ===== NEGAR =====
+    if (acao === "negar") {
+        try {
+            await membro.kick("Registro negado.");
 
-      await interaction.reply({
-        content: `❌ Registro negado! O usuário **${membro.user.tag}** foi expulso.`,
-      });
+            const negadoEmbed = new EmbedBuilder()
+                .setTitle("REGISTRO NEGADO")
+                .setColor("#ff3333")
+                .setThumbnail(interaction.guild.iconURL())
+                .addFields(
+                    { name: "Usuário:", value: membro.user.tag },
+                    { name: "Negado por:", value: `${interaction.user}` }
+                );
 
-    } catch (e) {
-      console.log(e);
-      await interaction.reply({
-        content: "❌ Não consegui expulsar o usuário. Permissões insuficientes.",
-        ephemeral: true,
-      });
+            await interaction.update({ embeds: [negadoEmbed], components: [] });
+
+        } catch (e) {
+            await interaction.reply({
+                content: "❌ Não consegui expulsar o usuário.",
+                ephemeral: true,
+            });
+        }
     }
-  }
 });
 
-// ===================== ADDCARGO / REMOVERCARGO =====================
-const { Client, GatewayIntentBits, Partials, EmbedBuilder } = require("discord.js");
+// ===================== ADD / REMOVER CARGO =====================
 require("dotenv").config();
+const { Client, GatewayIntentBits, Partials, Collection } = require("discord.js");
+const fs = require("fs");
+const path = require("path");
 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages
     ],
-    partials: [Partials.Message, Partials.Channel, Partials.GuildMember]
+    partials: [Partials.User, Partials.Channel, Partials.GuildMember]
 });
 
-client.on("ready", () => {
-    console.log(`Bot online como ${client.user.tag}`);
+// Coleção para armazenar comandos
+client.commands = new Collection();
+
+// Carregar comandos da pasta /commands
+const commandsPath = path.join(__dirname, "commands");
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
+
+for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    client.commands.set(command.data.name, command);
+    console.log(`Comando carregado: ${command.data.name}`);
+}
+
+// Quando o bot fica online
+client.once("ready", () => {
+    console.log(`🔥 Bot online como ${client.user.tag}`);
 });
 
-// Função para extrair cargo e usuário de várias formas
-function extractTargets(message, args) {
-    let cargo =
-        message.mentions.roles.first() ||
-        message.guild.roles.cache.get(args[0]);
+// Listener de interações (slash commands)
+client.on("interactionCreate", async interaction => {
+    if (!interaction.isChatInputCommand()) return;
 
-    let usuario =
-        message.mentions.members.first() ||
-        message.guild.members.cache.get(args[1]);
+    const command = client.commands.get(interaction.commandName);
 
-    return { cargo, usuario };
-}
-
-// Função para checar hierarquia
-function canModify(message, cargo, usuario) {
-    const autor = message.member;
-
-    if (!cargo || !usuario) return false;
-
-    if (cargo.position >= autor.roles.highest.position) return false;
-    if (usuario.roles.highest.position >= autor.roles.highest.position) return false;
-
-    return true;
-}
-
-client.on("messageCreate", async (message) => {
-    if (message.author.bot) return;
-
-    const prefix = "!";
-    if (!message.content.startsWith(prefix)) return;
-
-    const args = message.content.slice(prefix.length).trim().split(/ +/g);
-    const cmd = args.shift().toLowerCase();
-
-    // ===========================
-    // ADDCARGO
-    // ===========================
-    if (cmd === "addcargo") {
-        const { cargo, usuario } = extractTargets(message, args);
-
-        await message.delete().catch(() => {});
-
-        if (!cargo || !usuario) {
-            const erro = new EmbedBuilder()
-                .setTitle("❌ Erro")
-                .setDescription("Use: `!addcargo @cargo @pessoa` ou variações.")
-                .setColor("Red")
-                .setThumbnail(message.guild.iconURL());
-
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
-        }
-
-        if (!canModify(message, cargo, usuario)) {
-            const erro = new EmbedBuilder()
-                .setTitle("⚠️ Permissão Negada")
-                .setDescription("Você **não pode setar esse cargo**.\nCargo igual/maior que o seu ou usuário com cargo maior.")
-                .setColor("Red")
-                .setThumbnail(message.guild.iconURL());
-
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
-        }
-
-        await usuario.roles.add(cargo).catch(() => {});
-
-        const embed = new EmbedBuilder()
-            .setTitle("Família A7")
-            .setColor("#00ff99")
-            .setThumbnail("https://cdn.discordapp.com/icons/" + message.guild.id + "/" + message.guild.icon + ".png")
-            .addFields(
-                { name: "Cargo:", value: `${cargo} \n(${cargo.id})`, inline: false },
-                { name: "Cargo setado com sucesso no:", value: `${usuario.user.username}_${usuario.user.discriminator}`, inline: false },
-                { name: "Quem setou:", value: `${message.author}`, inline: false }
-            );
-
-        return message.channel.send({ embeds: [embed] });
+    if (!command) {
+        console.log("Comando não encontrado.");
+        return;
     }
 
-    // ===========================
-    // REMOVERCARGO
-    // ===========================
-    if (cmd === "removercargo") {
-        const { cargo, usuario } = extractTargets(message, args);
-
-        await message.delete().catch(() => {});
-
-        if (!cargo || !usuario) {
-            const erro = new EmbedBuilder()
-                .setTitle("❌ Erro")
-                .setDescription("Use: `!removercargo @cargo @pessoa` ou variações.")
-                .setColor("Red")
-                .setThumbnail(message.guild.iconURL());
-
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
-        }
-
-        if (!canModify(message, cargo, usuario)) {
-            const erro = new EmbedBuilder()
-                .setTitle("⚠️ Permissão Negada")
-                .setDescription("Você **não pode remover esse cargo**.\nCargo igual/maior que o seu ou usuário com cargo maior.")
-                .setColor("Red")
-                .setThumbnail(message.guild.iconURL());
-
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
-        }
-
-        await usuario.roles.remove(cargo).catch(() => {});
-
-        const embed = new EmbedBuilder()
-            .setTitle("Família A7")
-            .setColor("#ff4444")
-            .setThumbnail("https://cdn.discordapp.com/icons/" + message.guild.id + "/" + message.guild.icon + ".png")
-            .addFields(
-                { name: "Cargo Removido:", value: `${cargo} \n(${cargo.id})`, inline: false },
-                { name: "Cargo removido do:", value: `${usuario}`, inline: false },
-                { name: "Quem removeu:", value: `${message.author}`, inline: false }
-            );
-
-        return message.channel.send({ embeds: [embed] });
+    try {
+        await command.execute(interaction, client);
+    } catch (error) {
+        console.error("Erro ao executar comando:", error);
+        return interaction.reply({
+            content: "❌ Ocorreu um erro ao executar este comando.",
+            ephemeral: true
+        });
     }
 });
 
+// Login do bot
 client.login(process.env.TOKEN);
-
-
-// ===================== LOGIN =====================
-client.login(TOKEN);
