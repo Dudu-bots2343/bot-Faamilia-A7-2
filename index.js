@@ -199,61 +199,88 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// ====================== COMANDO !addcargo ==========================
+// ======================= COMANDO !addcargo ==========================
 client.on("messageCreate", async (message) => {
-  if (!message.content.startsWith("!addcargo")) return;
-  if (!message.member.permissions.has("ManageRoles"))
-    return message.reply("❌ Você não tem permissão para usar esse comando.");
+    if (!message.content.startsWith("!addcargo")) return;
+    if (message.author.bot) return;
 
-  const args = message.content.split(" ").slice(1);
-  const cargo = message.mentions.roles.first() || message.guild.roles.cache.get(args[0]);
-  const userId = args[1];
+    // Apaga a mensagem enviada pelo usuário
+    await message.delete().catch(() => {});
 
-  if (!cargo)
-    return message.reply("❌ Mencione um cargo válido.\nEx: `!addcargo @cargo 1234567890123`");
+    // Quebra a mensagem
+    const args = message.content.split(" ");
 
-  if (!userId)
-    return message.reply("❌ Informe o **ID do usuário**.");
+    // Verifica se mencionou o cargo e a pessoa
+    const cargo = message.mentions.roles.first();
+    const membro = message.mentions.users.last();
 
-  const membro = await message.guild.members.fetch(userId).catch(() => null);
+    if (!cargo || !membro) {
+        const erroEmbed = new EmbedBuilder()
+            .setTitle("Adicionar Cargo")
+            .setColor("#e74c3c") // Vermelho
+            .setThumbnail(message.guild.iconURL())
+            .setDescription("❌ **Use:** `!addcargo @cargo @pessoa`");
 
-  if (!membro)
-    return message.reply("❌ Não encontrei um usuário com esse ID.");
+        const msg = await message.channel.send({ embeds: [erroEmbed] });
+        setTimeout(() => msg.delete().catch(() => {}), 20000);
+        return;
+    }
 
-  try {
-    await membro.roles.add(cargo.id);
+    // Buscar membro no servidor
+    const memberGuild = await message.guild.members.fetch(membro.id).catch(() => null);
 
-    // Criar embed estilo do seu exemplo
-    const embed = {
-      color: 0xff0000, // vermelho
-      title: "Família A7",
-      fields: [
-        {
-          name: "Cargo:",
-          value: `${cargo} \n(${cargo.id})`,
-        },
-        {
-          name: "Cargo setado com sucesso no:",
-          value: `${membro.user.username}`,
-        },
-        {
-          name: "Quem setou:",
-          value: `${message.member}`,
-        },
-      ],
-      thumbnail: {
-        url: "https://cdn-icons-png.flaticon.com/512/1828/1828640.png", // ícone de coroa igual estilo da imagem
-      },
-    };
+    if (!memberGuild) {
+        const erroEmbed = new EmbedBuilder()
+            .setTitle("Adicionar Cargo")
+            .setColor("#e74c3c")
+            .setThumbnail(message.guild.iconURL())
+            .setDescription("❌ **Usuário não encontrado no servidor.**");
 
-    await message.reply({ embeds: [embed] });
+        const msg = await message.channel.send({ embeds: [erroEmbed] });
+        setTimeout(() => msg.delete().catch(() => {}), 20000);
+        return;
+    }
 
-  } catch (e) {
-    console.log(e);
-    return message.reply("❌ Não consegui adicionar o cargo. Verifique permissões.");
-  }
+    // Tenta aplicar o cargo
+    try {
+        await memberGuild.roles.add(cargo.id);
+
+        const sucessoEmbed = new EmbedBuilder()
+            .setTitle("Família A7")
+            .setColor("#3498db") // Azul bonito
+            .setThumbnail(message.guild.iconURL())
+            .addFields(
+                {
+                    name: "Cargo:",
+                    value: `${cargo} \n(${cargo.id})`,
+                },
+                {
+                    name: "Cargo setado com sucesso no:",
+                    value: `${memberGuild.user.tag}`,
+                },
+                {
+                    name: "Quem setou:",
+                    value: `${message.author}`,
+                }
+            );
+
+        const msg = await message.channel.send({ embeds: [sucessoEmbed] });
+
+        // apagar após 20 segundos
+        setTimeout(() => msg.delete().catch(() => {}), 20000);
+
+    } catch (err) {
+        const erroEmbed = new EmbedBuilder()
+            .setTitle("Família A7")
+            .setColor("#e74c3c")
+            .setThumbnail(message.guild.iconURL())
+            .setDescription("❌ **Erro ao aplicar o cargo.**\nVerifique permissões.");
+
+        const msg = await message.channel.send({ embeds: [erroEmbed] });
+        setTimeout(() => msg.delete().catch(() => {}), 20000);
+    }
 });
 
-
 client.login(TOKEN);
+
 
