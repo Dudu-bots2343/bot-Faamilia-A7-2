@@ -1,13 +1,16 @@
 // ====================== KEEP ALIVE ======================
 const express = require("express");
 const app = express();
-app.get("/", (req, res) => res.send("Bot ativo!"));
-app.listen(3000, () => console.log("Keep alive rodando!"));
+
+// Página inicial para o UptimeRobot pingar
+app.get("/", (req, res) => res.send("Bot ativo e rodando 24h! 🚀"));
+
+app.listen(3000, () => console.log("🌐 KeepAlive ativo na porta 3000!"));
 
 // ====================== DOTENV ==========================
 require("dotenv").config();
 
-// ====================== DISCORD.JS =======================
+// ====================== DISCORD.JS ======================
 const {
   Client,
   GatewayIntentBits,
@@ -39,18 +42,18 @@ const TOKEN = process.env.TOKEN;
 
 // ====================== BOT ONLINE ========================
 client.on("ready", async () => {
-  console.log(`Bot ligado como ${client.user.tag}`);
+  console.log(`🤖 Bot ligado como ${client.user.tag}`);
 
   const canal = await client.channels.fetch(CANAL_PEDIR_SET);
 
   const embed = new EmbedBuilder()
-    .setTitle("Sistema Familia A7")
+    .setTitle("Sistema Família A7")
     .setDescription(
-      "Registro A7.\n\n Solicite Set , usando os botões abaixo.\n Registre-se Abaixo."
+      "Registro A7.\n\n Solicite SET usando o botão abaixo.\nPreencha com atenção!"
     )
     .addFields({
       name: "📌 Observações",
-      value: `• A resenha aqui e garantida.\n• Não leve a brincadeira a sério.`,
+      value: `• A resenha aqui é garantida.\n• Não leve tudo a sério.`,
     })
     .setColor("#f1c40f");
 
@@ -62,6 +65,8 @@ client.on("ready", async () => {
   );
 
   await canal.send({ embeds: [embed], components: [btn] });
+
+  console.log("📩 Mensagem de registro enviada!");
 });
 
 // ====================== ABRIR MODAL ========================
@@ -162,6 +167,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
         CARGO_APROVADO_2,
       ]);
 
+      // ======= MENSAGEM DE BOAS-VINDAS =======
+      const mensagem = `
+<:Design_sem_nomeremovebgpreview:1429140408641781871>  **Set Aprovado! Bem-vindo à Family A7!** <:emojia7:1429141492080967730>
+
+Parabéns! Seu set foi oficialmente aceito e agora você faz parte da Family A7, um lugar onde a vibe é diferente, a energia é única e cada pessoa soma do seu próprio jeito...
+
+✨ **Seja muito bem-vindo!** ✨
+`;
+
+      await membro.send(mensagem).catch(() => {});
+
       const embedAprovado = new EmbedBuilder()
         .setColor("Green")
         .setTitle("Registro Aprovado")
@@ -171,7 +187,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           { name: "📛 Nome Informado:", value: `A7 ${nomeInformado}` },
           { name: "🧭 Acesso aprovado por:", value: `${interaction.user}` }
         )
-        .setThumbnail(embedOriginal.data.thumbnail?.url || membro.user.displayAvatarURL())
+        .setThumbnail(membro.user.displayAvatarURL())
         .setFooter({ text: "Aprovado com sucesso!" });
 
       await interaction.update({
@@ -213,152 +229,5 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 });
-const { Client, GatewayIntentBits, Partials, EmbedBuilder } = require("discord.js");
-require("dotenv").config();
 
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
-    ],
-    partials: [Partials.Message, Partials.Channel, Partials.GuildMember]
-});
-
-client.on("ready", () => {
-    console.log(`Bot online como ${client.user.tag}`);
-});
-
-// Função para extrair cargo e usuário de várias formas
-function extractTargets(message, args) {
-    let cargo =
-        message.mentions.roles.first() ||
-        message.guild.roles.cache.get(args[0]);
-
-    let usuario =
-        message.mentions.members.first() ||
-        message.guild.members.cache.get(args[1]);
-
-    return { cargo, usuario };
-}
-
-// Função para checar hierarquia
-function canModify(message, cargo, usuario) {
-    const autor = message.member;
-
-    if (!cargo || !usuario) return false;
-
-    if (cargo.position >= autor.roles.highest.position) return false;
-    if (usuario.roles.highest.position >= autor.roles.highest.position) return false;
-
-    return true;
-}
-
-client.on("messageCreate", async (message) => {
-    if (message.author.bot) return;
-
-    const prefix = "!";
-    if (!message.content.startsWith(prefix)) return;
-
-    const args = message.content.slice(prefix.length).trim().split(/ +/g);
-    const cmd = args.shift().toLowerCase();
-
-    // ===========================
-    // ADDCARGO
-    // ===========================
-    if (cmd === "addcargo") {
-        const { cargo, usuario } = extractTargets(message, args);
-
-        await message.delete().catch(() => {});
-
-        if (!cargo || !usuario) {
-            const erro = new EmbedBuilder()
-                .setTitle("❌ Erro")
-                .setDescription("Use: `!addcargo @cargo @pessoa` ou variações.")
-                .setColor("Red")
-                .setThumbnail(message.guild.iconURL());
-
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
-        }
-
-        if (!canModify(message, cargo, usuario)) {
-            const erro = new EmbedBuilder()
-                .setTitle("⚠️ Permissão Negada")
-                .setDescription("Você **não pode setar esse cargo**.\nCargo igual/maior que o seu ou usuário com cargo maior.")
-                .setColor("Red")
-                .setThumbnail(message.guild.iconURL());
-
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
-        }
-
-        await usuario.roles.add(cargo).catch(() => {});
-
-        const embed = new EmbedBuilder()
-            .setTitle("Família A7")
-            .setColor("#00ff99")
-            .setThumbnail("https://cdn.discordapp.com/icons/" + message.guild.id + "/" + message.guild.icon + ".png")
-            .addFields(
-                { name: "Cargo:", value: `${cargo} \n(${cargo.id})`, inline: false },
-                { name: "Cargo setado com sucesso no:", value: `${usuario.user.username}_${usuario.user.discriminator}`, inline: false },
-                { name: "Quem setou:", value: `${message.author}`, inline: false }
-            );
-
-        return message.channel.send({ embeds: [embed] });
-    }
-
-    // ===========================
-    // REMOVERCARGO
-    // ===========================
-    if (cmd === "removercargo") {
-        const { cargo, usuario } = extractTargets(message, args);
-
-        await message.delete().catch(() => {});
-
-        if (!cargo || !usuario) {
-            const erro = new EmbedBuilder()
-                .setTitle("❌ Erro")
-                .setDescription("Use: `!removercargo @cargo @pessoa` ou variações.")
-                .setColor("Red")
-                .setThumbnail(message.guild.iconURL());
-
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
-        }
-
-        if (!canModify(message, cargo, usuario)) {
-            const erro = new EmbedBuilder()
-                .setTitle("⚠️ Permissão Negada")
-                .setDescription("Você **não pode remover esse cargo**.\nCargo igual/maior que o seu ou usuário com cargo maior.")
-                .setColor("Red")
-                .setThumbnail(message.guild.iconURL());
-
-            return message.channel.send({ embeds: [erro] }).then(msg => {
-                setTimeout(() => msg.delete().catch(()=>{}), 20000);
-            });
-        }
-
-        await usuario.roles.remove(cargo).catch(() => {});
-
-        const embed = new EmbedBuilder()
-            .setTitle("Família A7")
-            .setColor("#ff4444")
-            .setThumbnail("https://cdn.discordapp.com/icons/" + message.guild.id + "/" + message.guild.icon + ".png")
-            .addFields(
-                { name: "Cargo Removido:", value: `${cargo} \n(${cargo.id})`, inline: false },
-                { name: "Cargo removido do:", value: `${usuario}`, inline: false },
-                { name: "Quem removeu:", value: `${message.author}`, inline: false }
-            );
-
-        return message.channel.send({ embeds: [embed] });
-    }
-});
-
-client.login(process.env.TOKEN);
-
-
+client.login(TOKEN);
