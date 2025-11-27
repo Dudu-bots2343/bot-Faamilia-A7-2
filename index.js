@@ -4,8 +4,10 @@ const app = express();
 app.get("/", (req, res) => res.send("Bot ativo e rodando 24h! 🚀"));
 app.listen(3000, () => console.log("🌐 KeepAlive ativo na porta 3000!"));
 
+
 // ====================== DOTENV ==========================
 require("dotenv").config();
+
 
 // ====================== DISCORD.JS ======================
 const {
@@ -19,10 +21,14 @@ const {
   TextInputBuilder,
   TextInputStyle,
   Events,
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+  Partials
 } = require("discord.js");
 
 const fs = require("fs");
 const path = require("path");
+
 
 // ====================== CLIENT ==========================
 const client = new Client({
@@ -31,8 +37,11 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions
   ],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
+
 
 // ====================== VARIÁVEIS .ENV ==================
 const {
@@ -42,30 +51,34 @@ const {
   CARGO_APROVADO_2,
   CANAL_PEDIR_DOACAO,
   CANAL_APROVAR_DOACAO,
+  CANAL_RANKING,
   META_TOTAL,
-  TOKEN
+  TOKEN,
+  GUILD_ID
 } = process.env;
 
-// ====================== DATABASE DOAÇÕES =================
-const dbPath = path.join(__dirname, "doacoes.json");
 
-if (!fs.existsSync(dbPath)) {
-  fs.writeFileSync(dbPath, JSON.stringify({ total: 0, users: {} }, null, 2));
+// ==========================================================
+// ========================= DATABASE ========================
+// ==========================================================
+let data = { total: 0, jogadores: {} };
+
+if (fs.existsSync("./dados.json")) {
+  data = JSON.parse(fs.readFileSync("./dados.json", "utf8"));
 }
 
-function loadDB() {
-  return JSON.parse(fs.readFileSync(dbPath));
+function salvar() {
+  fs.writeFileSync("./dados.json", JSON.stringify(data, null, 2));
 }
 
-function saveDB(data) {
-  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
-}
 
-// ====================== BOT ONLINE ======================
+// ==========================================================
+// ======================== BOT ONLINE =======================
+// ==========================================================
 client.on("ready", async () => {
   console.log(`🤖 Bot ligado como ${client.user.tag}`);
 
-  // ======= Mensagem de Registro =======
+  // ======= Mensagem de Registro (SET) =======
   const canalSet = await client.channels.fetch(CANAL_PEDIR_SET);
 
   const embed = new EmbedBuilder()
@@ -88,8 +101,9 @@ client.on("ready", async () => {
 
   await canalSet.send({ embeds: [embed], components: [btn] });
 
-  // =========== Mensagem de DOAÇÃO ===========
-  const canalDoar = await client.channels.fetch(CANAL_PEDIR_DOACAO);
+
+  // ======= Mensagem de DOAÇÃO =======
+  const canalDoar = await client.channels.fetch(CANAL_PEDIR_DOACION);
 
   const embedDoar = new EmbedBuilder()
     .setTitle("Sistema de Doações 💰")
@@ -107,13 +121,35 @@ client.on("ready", async () => {
 
   await canalDoar.send({ embeds: [embedDoar], components: [btnDoar] });
 
+  // Registrar Slash Commands
+  const guild = client.guilds.cache.get(GUILD_ID);
+  if (guild) {
+    const commands = [
+      new SlashCommandBuilder()
+        .setName("doar")
+        .setDescription("Enviar um pedido de doação")
+        .addIntegerOption(opt =>
+          opt.setName("quantia").setDescription("Valor da doação").setRequired(true)
+        ),
+
+      new SlashCommandBuilder()
+        .setName("aprovar")
+        .setDescription("Aprovar doações pendentes")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    ];
+
+    await guild.commands.set(commands);
+  }
+
+  atualizarRanking();
+
   console.log("📩 Mensagens enviadas (SET + Doações)");
 });
+
 
 // ==========================================================
 // ======================= SISTEMA SET =======================
 // ==========================================================
-
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
   if (interaction.customId !== "abrirRegistro") return;
@@ -142,6 +178,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   await interaction.showModal(modal);
 });
 
+
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isModalSubmit()) return;
   if (interaction.customId !== "modalRegistro") return;
@@ -163,7 +200,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         name: "Conta Criada em",
         value: `<t:${Math.floor(
           interaction.user.createdTimestamp / 1000
-        )}:R>`,
+        )}:R>`
       }
     );
 
@@ -182,6 +219,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   await interaction.reply({ content: "Seu pedido foi enviado!", ephemeral: true });
 });
+
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
@@ -243,175 +281,111 @@ Parabéns! Seu set foi oficialmente aceito e agora você faz parte da Family A7!
   }
 });
 
+
 // ==========================================================
 // ===================== SISTEMA DOAÇÕES ====================
 // ==========================================================
 
-import {
-    Client,
-    GatewayIntentBits,
-    Partials,
-    EmbedBuilder,
-    SlashCommandBuilder,
-    Collection,
-    PermissionFlagsBits
-} from "discord.js";
-import fs from "fs";
-import dotenv from "dotenv";
-dotenv.config();
+// ===== Slash Commands =====
+client.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isChatInputCommand()) return;
 
-// ============= CARREGAR DADOS ============
-let data = { total: 0, jogadores: {} };
+  // ------------------------- /doar -------------------------
+  if (interaction.commandName === "doar") {
+    const quantia = interaction.options.getInteger("quantia");
+    const canal = interaction.guild.channels.cache.get(CANAL_APROVAR_DOACAO);
 
-if (fs.existsSync("./dados.json")) {
-    data = JSON.parse(fs.readFileSync("./dados.json", "utf8"));
-}
+    if (!canal) return interaction.reply({ content: "Canal de aprovação não encontrado!", ephemeral: true });
 
-// ============= SALVAR ============
-function salvar() {
-    fs.writeFileSync("./dados.json", JSON.stringify(data, null, 2));
-}
+    const embed = new EmbedBuilder()
+      .setTitle("📥 Nova solicitação de doação")
+      .setDescription(`Usuário: <@${interaction.user.id}>\nValor: **${quantia.toLocaleString()}**`)
+      .setColor("#00aaff");
 
-// ============= BOT ============
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
-    ],
-    partials: [Partials.Message, Partials.Channel],
+    const msg = await canal.send({ embeds: [embed] });
+    msg.react("✅");
+
+    return interaction.reply({ content: "Seu pedido de doação foi enviado!", ephemeral: true });
+  }
+
+  // ------------------------- /aprovar ------------------------
+  if (interaction.commandName === "aprovar") {
+    return interaction.reply({
+      content: "Para aprovar clique no emoji **✅** nas mensagens do canal de aprovação.",
+      ephemeral: true
+    });
+  }
 });
 
-client.commands = new Collection();
 
-// ============= REGISTRAR COMANDOS ============
-const commands = [
-    new SlashCommandBuilder()
-        .setName("doar")
-        .setDescription("Enviar um pedido de doação")
-        .addIntegerOption(opt =>
-            opt.setName("quantia")
-            .setDescription("Valor da doação")
-            .setRequired(true)
-        ),
-
-    new SlashCommandBuilder()
-        .setName("aprovar")
-        .setDescription("Aprovar doações pendentes")
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-].map(cmd => cmd.toJSON());
-
-client.once("ready", async () => {
-    console.log(`Bot online como ${client.user.tag}`);
-
-    // Registrar comandos
-    const guild = client.guilds.cache.get(process.env.GUILD_ID);
-    if (guild) {
-        await guild.commands.set(commands);
-        console.log("Comandos registrados no servidor!");
-    }
-
-    atualizarRanking();
-});
-
-// =================================================================
-// SISTEMA PEDIR DOAÇÃO
-// =================================================================
-client.on("interactionCreate", async interaction => {
-    if (!interaction.isCommand()) return;
-
-    if (interaction.commandName === "doar") {
-        const quantia = interaction.options.getInteger("quantia");
-        const canal = interaction.guild.channels.cache.get(process.env.CANAL_APROVAR_DOACAO);
-
-        if (!canal) return interaction.reply({ content: "Canal de aprovação não encontrado!", ephemeral: true });
-
-        const embed = new EmbedBuilder()
-            .setTitle("📥 Nova solicitação de doação")
-            .setDescription(`Usuário: <@${interaction.user.id}>\nValor: **${quantia.toLocaleString()}**`)
-            .setColor("#00aaff");
-
-        const msg = await canal.send({ embeds: [embed] });
-        msg.react("✅");
-
-        interaction.reply({ content: "Seu pedido de doação foi enviado!", ephemeral: true });
-    }
-
-    // =================================================================
-    // SISTEMA APROVAR DOAÇÃO
-    // =================================================================
-    if (interaction.commandName === "aprovar") {
-        return interaction.reply({
-            content: "Para aprovar clique no emoji **✅** das mensagens no canal de aprovação.",
-            ephemeral: true
-        });
-    }
-});
-
-// =================================================================
-// APROVAR PELO REACT
-// =================================================================
+// ==========================================================
+// =================== APROVAR PELO REACT ===================
+// ==========================================================
 client.on("messageReactionAdd", async (reaction, user) => {
-    if (user.bot) return;
-    if (reaction.message.channel.id !== process.env.CANAL_APROVAR_DOACAO) return;
-    if (reaction.emoji.name !== "✅") return;
+  if (user.bot) return;
+  if (reaction.message.channel.id !== CANAL_APROVAR_DOACAO) return;
+  if (reaction.emoji.name !== "✅") return;
 
-    const embed = reaction.message.embeds[0];
-    if (!embed) return;
+  const embed = reaction.message.embeds[0];
+  if (!embed) return;
 
-    const userId = embed.description.match(/<@(\d+)>/)[1];
-    const quantia = parseInt(embed.description.split("Valor: **")[1].replace(/\D/g, ""));
+  const userId = embed.description.match(/<@(\d+)>/)[1];
+  const quantia = parseInt(
+    embed.description
+      .split("Valor: **")[1]
+      .replace(/\D/g, "")
+  );
 
-    // ---- adicionar total ----
-    data.total += quantia;
+  // Somar total da meta
+  data.total += quantia;
 
-    // ---- player ----
-    if (!data.jogadores[userId]) data.jogadores[userId] = 0;
-    data.jogadores[userId] += quantia;
+  // Atualizar jogador
+  if (!data.jogadores[userId]) data.jogadores[userId] = 0;
+  data.jogadores[userId] += quantia;
 
-    salvar();
-    atualizarRanking();
+  salvar();
+  atualizarRanking();
 
-    reaction.message.delete();
+  reaction.message.delete();
 });
 
-// =================================================================
-// RANKING AUTOMÁTICO
-// =================================================================
-function gerarBarra() {
-    const progresso = data.total / parseInt(process.env.META_TOTAL);
-    const porcentagem = Math.min(100, Math.floor(progresso * 100));
 
-    const barras = Math.floor(porcentagem / 5);
-    return "█".repeat(barras) + "░".repeat(20 - barras);
+// ==========================================================
+// ==================== RANKING AUTOMÁTICO ==================
+// ==========================================================
+function gerarBarra() {
+  const progresso = data.total / parseInt(META_TOTAL);
+  const porcentagem = Math.min(100, Math.floor(progresso * 100));
+
+  const barras = Math.floor(porcentagem / 5);
+  return "█".repeat(barras) + "░".repeat(20 - barras);
 }
 
 async function atualizarRanking() {
-    const canal = client.channels.cache.get(process.env.CANAL_RANKING);
-    if (!canal) return;
+  const canal = client.channels.cache.get(CANAL_RANKING);
+  if (!canal) return;
 
-    const top = Object.entries(data.jogadores)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([id, valor], i) => `**${i + 1}. <@${id}> — ${valor.toLocaleString()}**`)
-        .join("\n");
+  const top = Object.entries(data.jogadores)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([id, valor], i) => `**${i + 1}. <@${id}> — ${valor.toLocaleString()}**`)
+    .join("\n");
 
-    const embed = new EmbedBuilder()
-        .setTitle("🏆 Ranking de Doadores")
-        .setDescription(top || "Nenhuma doação ainda")
-        .addFields({
-            name: "📊 Progresso da Meta",
-            value: `${gerarBarra()}\n${data.total.toLocaleString()}/${parseInt(process.env.META_TOTAL).toLocaleString()}`
-        })
-        .setColor("#ffaa00");
+  const embed = new EmbedBuilder()
+    .setTitle("🏆 Ranking de Doadores")
+    .setDescription(top || "Nenhuma doação ainda")
+    .addFields({
+      name: "📊 Progresso da Meta",
+      value: `${gerarBarra()}\n${data.total.toLocaleString()}/${parseInt(META_TOTAL).toLocaleString()}`
+    })
+    .setColor("#ffaa00");
 
-    canal.bulkDelete(10).catch(() => {});
-    canal.send({ embeds: [embed] });
+  canal.bulkDelete(10).catch(() => {});
+  canal.send({ embeds: [embed] });
 }
 
-// =================================================================
-// LOGIN
-// =================================================================
-client.login(process.env.TOKEN);
 
+// ==========================================================
+// ======================== LOGIN ===========================
+// ==========================================================
+client.login(TOKEN);
