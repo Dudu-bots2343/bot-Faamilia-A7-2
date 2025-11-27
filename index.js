@@ -1,10 +1,7 @@
 // ====================== KEEP ALIVE ======================
 const express = require("express");
 const app = express();
-
-// Página inicial para o UptimeRobot pingar
 app.get("/", (req, res) => res.send("Bot ativo e rodando 24h! 🚀"));
-
 app.listen(3000, () => console.log("🌐 KeepAlive ativo na porta 3000!"));
 
 // ====================== DOTENV ==========================
@@ -24,6 +21,10 @@ const {
   Events,
 } = require("discord.js");
 
+const fs = require("fs");
+const path = require("path");
+
+// ====================== CLIENT ==========================
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -33,18 +34,39 @@ const client = new Client({
   ],
 });
 
-// ====================== VARIÁVEIS DO .ENV =================
-const CANAL_PEDIR_SET = process.env.CANAL_PEDIR_SET;
-const CANAL_ACEITA_SET = process.env.CANAL_ACEITA_SET;
-const CARGO_APROVADO = process.env.CARGO_APROVADO;
-const CARGO_APROVADO_2 = process.env.CARGO_APROVADO_2;
-const TOKEN = process.env.TOKEN;
+// ====================== VARIÁVEIS .ENV ==================
+const {
+  CANAL_PEDIR_SET,
+  CANAL_ACEITA_SET,
+  CARGO_APROVADO,
+  CARGO_APROVADO_2,
+  CANAL_PEDIR_DOACAO,
+  CANAL_APROVAR_DOACAO,
+  META_TOTAL,
+  TOKEN
+} = process.env;
 
-// ====================== BOT ONLINE ========================
+// ====================== DATABASE DOAÇÕES =================
+const dbPath = path.join(__dirname, "doacoes.json");
+
+if (!fs.existsSync(dbPath)) {
+  fs.writeFileSync(dbPath, JSON.stringify({ total: 0, users: {} }, null, 2));
+}
+
+function loadDB() {
+  return JSON.parse(fs.readFileSync(dbPath));
+}
+
+function saveDB(data) {
+  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+}
+
+// ====================== BOT ONLINE ======================
 client.on("ready", async () => {
   console.log(`🤖 Bot ligado como ${client.user.tag}`);
 
-  const canal = await client.channels.fetch(CANAL_PEDIR_SET);
+  // ======= Mensagem de Registro =======
+  const canalSet = await client.channels.fetch(CANAL_PEDIR_SET);
 
   const embed = new EmbedBuilder()
     .setTitle("Sistema Família A7")
@@ -64,12 +86,34 @@ client.on("ready", async () => {
       .setStyle(ButtonStyle.Primary)
   );
 
-  await canal.send({ embeds: [embed], components: [btn] });
+  await canalSet.send({ embeds: [embed], components: [btn] });
 
-  console.log("📩 Mensagem de registro enviada!");
+  // =========== Mensagem de DOAÇÃO ===========
+  const canalDoar = await client.channels.fetch(CANAL_PEDIR_DOACAO);
+
+  const embedDoar = new EmbedBuilder()
+    .setTitle("Sistema de Doações 💰")
+    .setDescription(
+      "Clique no botão abaixo para registrar uma **nova doação**.\nApós isso, um STAFF irá aprovar."
+    )
+    .setColor("#e67e22");
+
+  const btnDoar = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("abrirDoacao")
+      .setLabel("Registrar Doação")
+      .setStyle(ButtonStyle.Success)
+  );
+
+  await canalDoar.send({ embeds: [embedDoar], components: [btnDoar] });
+
+  console.log("📩 Mensagens enviadas (SET + Doações)");
 });
 
-// ====================== ABRIR MODAL ========================
+// ==========================================================
+// ======================= SISTEMA SET =======================
+// ==========================================================
+
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
   if (interaction.customId !== "abrirRegistro") return;
@@ -98,7 +142,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   await interaction.showModal(modal);
 });
 
-// ====================== RECEBER FORM ========================
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isModalSubmit()) return;
   if (interaction.customId !== "modalRegistro") return;
@@ -137,13 +180,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   await canal.send({ embeds: [embed], components: [row] });
 
-  await interaction.reply({
-    content: "Seu pedido foi enviado!",
-    ephemeral: true,
-  });
+  await interaction.reply({ content: "Seu pedido foi enviado!", ephemeral: true });
 });
 
-// =================== APROVAR / NEGAR ===================
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isButton()) return;
 
@@ -151,32 +190,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!["aprovar", "negar"].includes(acao)) return;
 
   const membro = await interaction.guild.members.fetch(userId);
-
   const embedOriginal = interaction.message.embeds[0];
 
   const nomeInformado = embedOriginal.fields.find(f => f.name === "Nome Informado")?.value;
   const idInformado = embedOriginal.fields.find(f => f.name === "ID Informado")?.value;
 
-  // ========== APROVAR ==========
   if (acao === "aprovar") {
     try {
       await membro.setNickname(`A7 ${nomeInformado}`);
+      await membro.roles.add([CARGO_APROVADO, CARGO_APROVADO_2]);
 
-      await membro.roles.add([
-        CARGO_APROVADO,
-        CARGO_APROVADO_2,
-      ]);
-
-      // ======= MENSAGEM DE BOAS-VINDAS =======
-      const mensagem = `
+      const msg = `
 <:Design_sem_nomeremovebgpreview:1429140408641781871>  **Set Aprovado! Bem-vindo à Family A7!** <:emojia7:1429141492080967730>
 
-Parabéns! Seu set foi oficialmente aceito e agora você faz parte da Family A7, um lugar onde a vibe é diferente, a energia é única e cada pessoa soma do seu próprio jeito...
+Parabéns! Seu set foi oficialmente aceito e agora você faz parte da Family A7!
 
 ✨ **Seja muito bem-vindo!** ✨
-`;
+      `;
 
-      await membro.send(mensagem).catch(() => {});
+      await membro.send(msg).catch(() => {});
 
       const embedAprovado = new EmbedBuilder()
         .setColor("Green")
@@ -186,47 +218,132 @@ Parabéns! Seu set foi oficialmente aceito e agora você faz parte da Family A7,
           { name: "🪪 ID:", value: `${idInformado}` },
           { name: "📛 Nome Informado:", value: `A7 ${nomeInformado}` },
           { name: "🧭 Acesso aprovado por:", value: `${interaction.user}` }
-        )
-        .setThumbnail(membro.user.displayAvatarURL())
-        .setFooter({ text: "Aprovado com sucesso!" });
+        );
 
-      await interaction.update({
-        embeds: [embedAprovado],
-        components: []
-      });
+      await interaction.update({ embeds: [embedAprovado], components: [] });
 
     } catch (e) {
-      console.log(e);
-      return interaction.reply({
-        content: "❌ Erro ao aprovar. Verifique permissões.",
-        ephemeral: true
-      });
+      return interaction.reply({ content: "❌ Erro ao aprovar.", ephemeral: true });
     }
   }
 
-  // ========== NEGAR ==========
   if (acao === "negar") {
     try {
-      await membro.kick("Registro negado pelo aprovador.");
-
+      await membro.kick("Registro negado.");
       const embedNegado = new EmbedBuilder()
         .setColor("Red")
         .setTitle("Registro Negado")
-        .setDescription(`❌ O usuário **${membro.user.tag}** foi expulso.\nNegado por: ${interaction.user}`)
-        .setThumbnail(membro.user.displayAvatarURL());
+        .setDescription(`❌ O usuário **${membro.user.tag}** foi expulso.`);
 
-      await interaction.update({
-        embeds: [embedNegado],
-        components: []
-      });
+      await interaction.update({ embeds: [embedNegado], components: [] });
 
     } catch (e) {
-      console.log(e);
-      return interaction.reply({
-        content: "❌ Não consegui expulsar o usuário.",
-        ephemeral: true
-      });
+      return interaction.reply({ content: "❌ Não consegui expulsar.", ephemeral: true });
     }
+  }
+});
+
+// ==========================================================
+// ===================== SISTEMA DOAÇÕES ====================
+// ==========================================================
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isButton()) return;
+  if (interaction.customId !== "abrirDoacao") return;
+
+  const modal = new ModalBuilder()
+    .setCustomId("modalDoar")
+    .setTitle("Registrar Doação");
+
+  const valor = new TextInputBuilder()
+    .setCustomId("valor")
+    .setLabel("Valor da doação (somente números)")
+    .setRequired(true)
+    .setStyle(TextInputStyle.Short);
+
+  modal.addComponents(new ActionRowBuilder().addComponents(valor));
+
+  await interaction.showModal(modal);
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isModalSubmit()) return;
+  if (interaction.customId !== "modalDoar") return;
+
+  const valor = parseInt(interaction.fields.getTextInputValue("valor"));
+  if (isNaN(valor)) return interaction.reply({ content: "Valor inválido.", ephemeral: true });
+
+  const canal = await client.channels.fetch(CANAL_APROVAR_DOACAO);
+
+  const embed = new EmbedBuilder()
+    .setTitle("Nova Doação aguardando aprovação 💸")
+    .addFields(
+      { name: "Usuário", value: `${interaction.user}` },
+      { name: "Valor", value: `${valor.toLocaleString("pt-BR")}` }
+    )
+    .setColor("#2ecc71");
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`aprovarDoacao_${interaction.user.id}_${valor}`)
+      .setLabel("Aprovar")
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`negarDoacao_${interaction.user.id}`)
+      .setLabel("Negar")
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  await canal.send({ embeds: [embed], components: [row] });
+
+  await interaction.reply({ content: "Sua doação foi enviada para aprovação!", ephemeral: true });
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isButton()) return;
+
+  const [acao, userId, valor] = interaction.customId.split("_");
+
+  if (!["aprovarDoacao", "negarDoacao"].includes(acao)) return;
+
+  if (acao === "negarDoacao") {
+    const embed = new EmbedBuilder()
+      .setColor("Red")
+      .setTitle("Doação Negada")
+      .setDescription(`A doação foi recusada por ${interaction.user}.`);
+
+    return interaction.update({ embeds: [embed], components: [] });
+  }
+
+  if (acao === "aprovarDoacao") {
+    const val = Number(valor);
+    const membro = await interaction.guild.members.fetch(userId);
+
+    const db = loadDB();
+
+    db.total += val;
+
+    if (!db.users[userId]) db.users[userId] = 0;
+    db.users[userId] += val;
+
+    saveDB(db);
+
+    const progresso = (db.total / META_TOTAL) * 100;
+
+    const barra = "▰".repeat(progresso / 5) + "▱".repeat(20 - progresso / 5);
+
+    const embed = new EmbedBuilder()
+      .setColor("Green")
+      .setTitle("Doação Aprovada ✔️")
+      .addFields(
+        { name: "Usuário", value: `${membro}` },
+        { name: "Valor", value: `${val.toLocaleString("pt-BR")}` },
+        { name: "Total Arrecadado", value: db.total.toLocaleString("pt-BR") },
+        { name: "Meta", value: Number(META_TOTAL).toLocaleString("pt-BR") },
+        { name: "Progresso", value: `${barra}\n${progresso.toFixed(2)}%` }
+      );
+
+    await interaction.update({ embeds: [embed], components: [] });
   }
 });
 
