@@ -247,104 +247,171 @@ Parabéns! Seu set foi oficialmente aceito e agora você faz parte da Family A7!
 // ===================== SISTEMA DOAÇÕES ====================
 // ==========================================================
 
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isButton()) return;
-  if (interaction.customId !== "abrirDoacao") return;
+import {
+    Client,
+    GatewayIntentBits,
+    Partials,
+    EmbedBuilder,
+    SlashCommandBuilder,
+    Collection,
+    PermissionFlagsBits
+} from "discord.js";
+import fs from "fs";
+import dotenv from "dotenv";
+dotenv.config();
 
-  const modal = new ModalBuilder()
-    .setCustomId("modalDoar")
-    .setTitle("Registrar Doação");
+// ============= CARREGAR DADOS ============
+let data = { total: 0, jogadores: {} };
 
-  const valor = new TextInputBuilder()
-    .setCustomId("valor")
-    .setLabel("Valor da doação (somente números)")
-    .setRequired(true)
-    .setStyle(TextInputStyle.Short);
+if (fs.existsSync("./dados.json")) {
+    data = JSON.parse(fs.readFileSync("./dados.json", "utf8"));
+}
 
-  modal.addComponents(new ActionRowBuilder().addComponents(valor));
+// ============= SALVAR ============
+function salvar() {
+    fs.writeFileSync("./dados.json", JSON.stringify(data, null, 2));
+}
 
-  await interaction.showModal(modal);
+// ============= BOT ============
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers
+    ],
+    partials: [Partials.Message, Partials.Channel],
 });
 
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isModalSubmit()) return;
-  if (interaction.customId !== "modalDoar") return;
+client.commands = new Collection();
 
-  const valor = parseInt(interaction.fields.getTextInputValue("valor"));
-  if (isNaN(valor)) return interaction.reply({ content: "Valor inválido.", ephemeral: true });
+// ============= REGISTRAR COMANDOS ============
+const commands = [
+    new SlashCommandBuilder()
+        .setName("doar")
+        .setDescription("Enviar um pedido de doação")
+        .addIntegerOption(opt =>
+            opt.setName("quantia")
+            .setDescription("Valor da doação")
+            .setRequired(true)
+        ),
 
-  const canal = await client.channels.fetch(CANAL_APROVAR_DOACAO);
+    new SlashCommandBuilder()
+        .setName("aprovar")
+        .setDescription("Aprovar doações pendentes")
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+].map(cmd => cmd.toJSON());
 
-  const embed = new EmbedBuilder()
-    .setTitle("Nova Doação aguardando aprovação 💸")
-    .addFields(
-      { name: "Usuário", value: `${interaction.user}` },
-      { name: "Valor", value: `${valor.toLocaleString("pt-BR")}` }
-    )
-    .setColor("#2ecc71");
+client.once("ready", async () => {
+    console.log(`Bot online como ${client.user.tag}`);
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`aprovarDoacao_${interaction.user.id}_${valor}`)
-      .setLabel("Aprovar")
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(`negarDoacao_${interaction.user.id}`)
-      .setLabel("Negar")
-      .setStyle(ButtonStyle.Danger)
-  );
+    // Registrar comandos
+    const guild = client.guilds.cache.get(process.env.GUILD_ID);
+    if (guild) {
+        await guild.commands.set(commands);
+        console.log("Comandos registrados no servidor!");
+    }
 
-  await canal.send({ embeds: [embed], components: [row] });
-
-  await interaction.reply({ content: "Sua doação foi enviada para aprovação!", ephemeral: true });
+    atualizarRanking();
 });
 
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isButton()) return;
+// =================================================================
+// SISTEMA PEDIR DOAÇÃO
+// =================================================================
+client.on("interactionCreate", async interaction => {
+    if (!interaction.isCommand()) return;
 
-  const [acao, userId, valor] = interaction.customId.split("_");
+    if (interaction.commandName === "doar") {
+        const quantia = interaction.options.getInteger("quantia");
+        const canal = interaction.guild.channels.cache.get(process.env.CANAL_APROVAR_DOACAO);
 
-  if (!["aprovarDoacao", "negarDoacao"].includes(acao)) return;
+        if (!canal) return interaction.reply({ content: "Canal de aprovação não encontrado!", ephemeral: true });
 
-  if (acao === "negarDoacao") {
+        const embed = new EmbedBuilder()
+            .setTitle("📥 Nova solicitação de doação")
+            .setDescription(`Usuário: <@${interaction.user.id}>\nValor: **${quantia.toLocaleString()}**`)
+            .setColor("#00aaff");
+
+        const msg = await canal.send({ embeds: [embed] });
+        msg.react("✅");
+
+        interaction.reply({ content: "Seu pedido de doação foi enviado!", ephemeral: true });
+    }
+
+    // =================================================================
+    // SISTEMA APROVAR DOAÇÃO
+    // =================================================================
+    if (interaction.commandName === "aprovar") {
+        return interaction.reply({
+            content: "Para aprovar clique no emoji **✅** das mensagens no canal de aprovação.",
+            ephemeral: true
+        });
+    }
+});
+
+// =================================================================
+// APROVAR PELO REACT
+// =================================================================
+client.on("messageReactionAdd", async (reaction, user) => {
+    if (user.bot) return;
+    if (reaction.message.channel.id !== process.env.CANAL_APROVAR_DOACAO) return;
+    if (reaction.emoji.name !== "✅") return;
+
+    const embed = reaction.message.embeds[0];
+    if (!embed) return;
+
+    const userId = embed.description.match(/<@(\d+)>/)[1];
+    const quantia = parseInt(embed.description.split("Valor: **")[1].replace(/\D/g, ""));
+
+    // ---- adicionar total ----
+    data.total += quantia;
+
+    // ---- player ----
+    if (!data.jogadores[userId]) data.jogadores[userId] = 0;
+    data.jogadores[userId] += quantia;
+
+    salvar();
+    atualizarRanking();
+
+    reaction.message.delete();
+});
+
+// =================================================================
+// RANKING AUTOMÁTICO
+// =================================================================
+function gerarBarra() {
+    const progresso = data.total / parseInt(process.env.META_TOTAL);
+    const porcentagem = Math.min(100, Math.floor(progresso * 100));
+
+    const barras = Math.floor(porcentagem / 5);
+    return "█".repeat(barras) + "░".repeat(20 - barras);
+}
+
+async function atualizarRanking() {
+    const canal = client.channels.cache.get(process.env.CANAL_RANKING);
+    if (!canal) return;
+
+    const top = Object.entries(data.jogadores)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([id, valor], i) => `**${i + 1}. <@${id}> — ${valor.toLocaleString()}**`)
+        .join("\n");
+
     const embed = new EmbedBuilder()
-      .setColor("Red")
-      .setTitle("Doação Negada")
-      .setDescription(`A doação foi recusada por ${interaction.user}.`);
+        .setTitle("🏆 Ranking de Doadores")
+        .setDescription(top || "Nenhuma doação ainda")
+        .addFields({
+            name: "📊 Progresso da Meta",
+            value: `${gerarBarra()}\n${data.total.toLocaleString()}/${parseInt(process.env.META_TOTAL).toLocaleString()}`
+        })
+        .setColor("#ffaa00");
 
-    return interaction.update({ embeds: [embed], components: [] });
-  }
+    canal.bulkDelete(10).catch(() => {});
+    canal.send({ embeds: [embed] });
+}
 
-  if (acao === "aprovarDoacao") {
-    const val = Number(valor);
-    const membro = await interaction.guild.members.fetch(userId);
+// =================================================================
+// LOGIN
+// =================================================================
+client.login(process.env.TOKEN);
 
-    const db = loadDB();
-
-    db.total += val;
-
-    if (!db.users[userId]) db.users[userId] = 0;
-    db.users[userId] += val;
-
-    saveDB(db);
-
-    const progresso = (db.total / META_TOTAL) * 100;
-
-    const barra = "▰".repeat(progresso / 5) + "▱".repeat(20 - progresso / 5);
-
-    const embed = new EmbedBuilder()
-      .setColor("Green")
-      .setTitle("Doação Aprovada ✔️")
-      .addFields(
-        { name: "Usuário", value: `${membro}` },
-        { name: "Valor", value: `${val.toLocaleString("pt-BR")}` },
-        { name: "Total Arrecadado", value: db.total.toLocaleString("pt-BR") },
-        { name: "Meta", value: Number(META_TOTAL).toLocaleString("pt-BR") },
-        { name: "Progresso", value: `${barra}\n${progresso.toFixed(2)}%` }
-      );
-
-    await interaction.update({ embeds: [embed], components: [] });
-  }
-});
-
-client.login(TOKEN);
