@@ -47,7 +47,7 @@ client.on("ready", async () => {
   const canal = await client.channels.fetch(CANAL_PEDIR_SET);
 
   const embed = new EmbedBuilder()
-    .setTitle("Sistema Família A7")
+    .setTitle("Sistema Família A7 Vsync")
     .setDescription(
       "Registro A7.\n\n Solicite SET usando o botão abaixo.\nPreencha com atenção!"
     )
@@ -169,9 +169,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       // ======= MENSAGEM DE BOAS-VINDAS =======
       const mensagem = `
-**Set Aprovado! Bem-vindo à Family A7!** <:emojia7:1429141492080967730>
+<a:coroa4:1425236745762504768> **Seja Muito Bem-vindo à Family A7** <:emojia7:1429141492080967730>
 
-Parabéns! Seu set foi oficialmente aceito e agora você faz parte da Family A7, um lugar onde a vibe é diferente, a energia é única e cada pessoa soma do seu próprio jeito...
+Parabéns! Agora vc e um membro oficial da Family A7 Vsync, Seu set foi aceito , um lugar onde a vibe é diferente,
+A resenha aqui e 24 horas por dia, a energia é única e cada pessoa soma do seu próprio jeito...
 
 ✨ **Seja muito bem-vindo!** ✨
 `;
@@ -231,3 +232,4 @@ Parabéns! Seu set foi oficialmente aceito e agora você faz parte da Family A7,
 });
 
 client.login(TOKEN);
+
