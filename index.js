@@ -291,8 +291,137 @@ client.on("ready", async () => {
     }
 });
 
+//-------------------------------------//
+//   🔥 SISTEMA DE LOGS COMPLETO 🔥    //
+//-------------------------------------//
+
+const {
+    AuditLogEvent,
+    EmbedBuilder,
+    Events
+} = require("discord.js");
+
+require("dotenv").config();
+
+const canalMsg = process.env.LOG_MENSAGENS;
+const canalVoz = process.env.LOG_VOZ;
+const canalCargos = process.env.LOG_CARGOS;
+
+//---------------------------------------//
+// 📄 LOG DE MENSAGENS (ENVIADAS/EDITADAS/APAGADAS)
+//---------------------------------------//
+
+client.on(Events.MessageCreate, async msg => {
+    if (msg.author.bot) return;
+    let canal = client.channels.cache.get(canalMsg);
+    
+    canal.send({
+        embeds:[ new EmbedBuilder()
+        .setColor("#00ff99")
+        .setTitle("📝 Nova mensagem")
+        .addFields(
+            {name:"👤 Autor", value:`${msg.author}`},
+            {name:"📍 Canal", value:`${msg.channel}`},
+            {name:"💬 Conteúdo", value:`\`\`\`${msg.content}\`\`\``}
+        )
+        .setTimestamp() ]
+    });
+});
+
+// Editada
+client.on(Events.MessageUpdate, async (antiga, nova) => {
+    if (!antiga.content || !nova.content) return;
+    let canal = client.channels.cache.get(canalMsg);
+
+    canal.send({
+        embeds:[ new EmbedBuilder()
+        .setColor("#ffcc00")
+        .setTitle("✏ Mensagem Editada")
+        .addFields(
+            {name:"👤 Autor", value:`${antiga.author}`},
+            {name:"Antes", value:`\`\`\`${antiga.content}\`\`\``},
+            {name:"Depois", value:`\`\`\`${nova.content}\`\`\``}
+        )
+        .setTimestamp() ]
+    });
+});
+
+// Deletada
+client.on(Events.MessageDelete, async msg => {
+    if (!msg.content) return;
+    let canal = client.channels.cache.get(canalMsg);
+
+    canal.send({
+        embeds:[ new EmbedBuilder()
+        .setColor("Red")
+        .setTitle("🗑 Mensagem Apagada")
+        .addFields(
+            {name:"👤 Autor", value:`${msg.author}`},
+            {name:"Conteúdo", value:`\`\`\`${msg.content}\`\`\``}
+        )
+        .setTimestamp() ]
+    });
+});
+
+// Detectar SPAM (mais de 6 msgs em 5s)
+const msgCount = {};
+client.on(Events.MessageCreate, msg => {
+    if (msg.author.bot) return;
+    if (!msgCount[msg.author.id]) msgCount[msg.author.id] = 0;
+
+    msgCount[msg.author.id]++;
+
+    setTimeout(()=> msgCount[msg.author.id]--, 5000);
+
+    if(msgCount[msg.author.id] >= 6){
+        client.channels.cache.get(canalMsg).send(
+        `⚠ **Possível SPAM detectado!**  
+👤 Usuário: ${msg.author}  
+Canal: ${msg.channel}`
+        );
+    }
+});
+
+
+//---------------------------------------//
+// 🔊   LOG DE CALL — ENTRAR/Sair/Mover
+//---------------------------------------//
+client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+    let canal = client.channels.cache.get(canalVoz);
+
+    if (!oldState.channel && newState.channel) canal.send(`🟢 **${newState.member.user.username} entrou** em 📞 ${newState.channel.name}`);
+    if (oldState.channel && !newState.channel) canal.send(`🔴 **${newState.member.user.username} saiu** da call`);
+    if (oldState.channelId !== newState.channelId && oldState.channel && newState.channel)
+        canal.send(`🔁 **${newState.member.user.username} foi movido** \`${oldState.channel.name} → ${newState.channel.name}\``);
+});
+
+
+//---------------------------------------//
+// ⚙ LOG CARGOS — Adicionou, removeu, criou, apagou
+//---------------------------------------//
+
+// Cargo dado / removido
+client.on(Events.GuildMemberUpdate, (oldM, newM) => {
+    let canal = client.channels.cache.get(canalCargos);
+
+    const removido = oldM.roles.cache.filter(r => !newM.roles.cache.has(r.id));
+    const adicionado = newM.roles.cache.filter(r => !oldM.roles.cache.has(r.id));
+
+    removido.forEach(role => canal.send(`🔻 Cargo removido de ${newM.user}: **${role.name}**`));
+    adicionado.forEach(role => canal.send(`🔺 Cargo adicionado ao ${newM.user}: **${role.name}**`));
+});
+
+// Cargo criado / deletado
+client.on(Events.GuildRoleCreate, role => {
+    client.channels.cache.get(canalCargos).send(`🆕 Cargo **${role.name}** foi criado`);
+});
+client.on(Events.GuildRoleDelete, role => {
+    client.channels.cache.get(canalCargos).send(`❌ Cargo **${role.name}** foi deletado`);
+});
+
 
 client.login(TOKEN);
+
 
 
 
