@@ -265,7 +265,7 @@ client.on("messageCreate", async (message) => {
 
 // ==================== BOT EM CALL 24H ====================
 
-const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
+const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice"); // ← LINHA CORRIGIDA
 
 client.on("ready", async () => {
     try {
@@ -276,11 +276,11 @@ client.on("ready", async () => {
             channelId: canal.id,
             guildId: canal.guild.id,
             adapterCreator: canal.guild.voiceAdapterCreator,
-            selfDeaf: false // Se quiser que ele escute deixe false — para mutar coloque true
+            selfDeaf: false // false = bot escuta, true = bot fica mutado
         });
 
         const player = createAudioPlayer();
-        const resource = createAudioResource("silencio.mp3"); // arquivo vazio para não cair da call
+        const resource = createAudioResource("silencio.mp3"); // arquivo vazio pra não cair
 
         player.play(resource);
         conexao.subscribe(player);
@@ -291,7 +291,9 @@ client.on("ready", async () => {
     }
 });
 
+
 client.login(TOKEN);
+
 
 
 
