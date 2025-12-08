@@ -230,8 +230,41 @@ A resenha aqui e 24 horas por dia, a energia é única e cada pessoa soma do seu
     }
   }
 });
+// =================== ENVIAR MENSAGEM PARA TODOS OS MEMBROS ===================
+// Uso:  !pvall mensagem aqui
+// Ele envia no PV de todos os membros do servidor
+
+client.on("messageCreate", async (message) => {
+
+    if (!message.content.startsWith("!pvall")) return;
+    if (!message.member.permissions.has("Administrator")) 
+        return message.reply("❌ Você não tem permissão para usar este comando!");
+
+    const texto = message.content.split(" ").slice(1).join(" ");
+    if (!texto) return message.reply("⚠️ Escreva uma mensagem para enviar!");
+
+    const members = await message.guild.members.fetch();
+    
+    message.reply(`📨 Enviando mensagem para **${members.size} membros**... Pode levar um tempo.`);
+
+    let enviados = 0;
+    let falhou = 0;
+
+    members.forEach(m => {
+        if (m.user.bot) return; // Ignora bots
+        
+        m.send(`📩 **Mensagem da Staff:**\n${texto}`)
+            .then(() => enviados++)
+            .catch(() => falhou++);
+    });
+
+    setTimeout(() => {
+        message.channel.send(`✔️ Mensagens enviadas com sucesso para **${enviados} membros**.\n⚠️ Falhou em **${falhou} membros** (DM fechada).`);
+    }, 5000);
+});
 
 client.login(TOKEN);
+
 
 
 
