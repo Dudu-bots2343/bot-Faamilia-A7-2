@@ -253,7 +253,7 @@ client.on("messageCreate", async (message) => {
     members.forEach(m => {
         if (m.user.bot) return; // Ignora bots
         
-        m.send(`📩 **Mensagem da Staff:**\n${texto}`)
+        m.send(`📩 **Familia A7 :**\n${texto}`)
             .then(() => enviados++)
             .catch(() => falhou++);
     });
@@ -264,6 +264,7 @@ client.on("messageCreate", async (message) => {
 });
 
 client.login(TOKEN);
+
 
 
 
