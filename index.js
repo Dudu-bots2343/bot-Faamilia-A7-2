@@ -80,7 +80,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   const nome = new TextInputBuilder()
     .setCustomId("nome")
-    .setLabel("Seu nome Desejado *")
+    .setLabel("Seu nome*")
     .setRequired(true)
     .setStyle(TextInputStyle.Short);
 
@@ -103,7 +103,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isModalSubmit()) return;
   if (interaction.customId !== "modalRegistro") return;
 
-  const nome = interaction.fields.getTextInputValue("nome desejado");
+  const nome = interaction.fields.getTextInputValue("nome");
   const iduser = interaction.fields.getTextInputValue("iduser");
 
   const canal = await client.channels.fetch(CANAL_ACEITA_SET);
@@ -232,5 +232,6 @@ A resenha aqui e 24 horas por dia, a energia é única e cada pessoa soma do seu
 });
 
 client.login(TOKEN);
+
 
 
