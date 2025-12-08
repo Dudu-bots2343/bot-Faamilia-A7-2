@@ -47,7 +47,7 @@ client.on("ready", async () => {
   const canal = await client.channels.fetch(CANAL_PEDIR_SET);
 
   const embed = new EmbedBuilder()
-    .setTitle("Sistema Família A7 Vsync")
+    .setTitle("Sistema Família Do7 ")
     .setDescription(
       "Registro A7.\n\n Solicite SET usando o botão abaixo.\nPreencha com atenção!"
     )
@@ -80,7 +80,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   const nome = new TextInputBuilder()
     .setCustomId("nome")
-    .setLabel("Seu nome *")
+    .setLabel("Seu nome Desejado *")
     .setRequired(true)
     .setStyle(TextInputStyle.Short);
 
@@ -103,7 +103,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isModalSubmit()) return;
   if (interaction.customId !== "modalRegistro") return;
 
-  const nome = interaction.fields.getTextInputValue("nome");
+  const nome = interaction.fields.getTextInputValue("nome desejado");
   const iduser = interaction.fields.getTextInputValue("iduser");
 
   const canal = await client.channels.fetch(CANAL_ACEITA_SET);
@@ -169,10 +169,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       // ======= MENSAGEM DE BOAS-VINDAS =======
       const mensagem = `
-<a:coroa4:1425236745762504768> **Seja Muito Bem-vindo à Family A7** <:emojia7:1429141492080967730>
+<a:coroa4:1425236745762504768> **Seja Muito Bem-vindo à Family Do7 ** <:emojia7:1429141492080967730>
 
-Parabéns! Agora vc e um membro oficial da Family A7 Vsync, Seu set foi aceito , um lugar onde a vibe é diferente,
-A resenha aqui e 24 horas por dia, a energia é única e cada pessoa soma do seu próprio jeito...
+** Parabéns! Agora vc e um membro oficial da Family Do7 , Seu set foi aceito , um lugar onde a vibe é diferente,
+A resenha aqui e 24 horas por dia, a energia é única e cada pessoa soma do seu próprio jeito... **
 
 ✨ **Seja muito bem-vindo!** ✨
 `;
@@ -232,4 +232,5 @@ A resenha aqui e 24 horas por dia, a energia é única e cada pessoa soma do seu
 });
 
 client.login(TOKEN);
+
 
