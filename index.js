@@ -295,14 +295,10 @@ client.on("ready", async () => {
 //   🔥 SISTEMA DE LOGS COMPLETO 🔥    //
 //-------------------------------------//
 
-const {
-    AuditLogEvent,
-    EmbedBuilder,
-    Events
-} = require("discord.js");
+// Corrigido — Agora sem duplicar EmbedBuilder e Events
+const { AuditLogEvent } = require("discord.js"); 
 
-require("dotenv").config();
-
+// Variáveis dos canais do .env
 const canalMsg = process.env.LOG_MENSAGENS;
 const canalVoz = process.env.LOG_VOZ;
 const canalCargos = process.env.LOG_CARGOS;
@@ -421,6 +417,7 @@ client.on(Events.GuildRoleDelete, role => {
 
 
 client.login(TOKEN);
+
 
 
 
