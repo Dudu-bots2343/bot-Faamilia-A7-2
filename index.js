@@ -263,7 +263,36 @@ client.on("messageCreate", async (message) => {
     }, 5000);
 });
 
+// ==================== BOT EM CALL 24H ====================
+
+const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require("@discordjs/voice");
+
+client.on("ready", async () => {
+    try {
+        const canal = client.channels.cache.get(process.env.CALL_24H);
+        if (!canal) return console.log("❌ Canal de voz não encontrado!");
+
+        const conexao = joinVoiceChannel({
+            channelId: canal.id,
+            guildId: canal.guild.id,
+            adapterCreator: canal.guild.voiceAdapterCreator,
+            selfDeaf: false // Se quiser que ele escute deixe false — para mutar coloque true
+        });
+
+        const player = createAudioPlayer();
+        const resource = createAudioResource("silencio.mp3"); // arquivo vazio para não cair da call
+
+        player.play(resource);
+        conexao.subscribe(player);
+
+        console.log("🔊 Bot conectado na call 24h!");
+    } catch (err) {
+        console.log("Erro ao conectar no VC:", err);
+    }
+});
+
 client.login(TOKEN);
+
 
 
 
