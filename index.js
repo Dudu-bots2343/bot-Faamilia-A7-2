@@ -415,8 +415,23 @@ client.on(Events.GuildRoleDelete, role => {
     client.channels.cache.get(canalCargos).send(`❌ Cargo **${role.name}** foi deletado`);
 });
 
+// ====================== BLOQUEAR OUTROS SERVIDORES ======================
+
+// ID do servidor autorizado (vem do .env)
+const SERVIDOR_PERMITIDO = process.env.SERVIDOR_PERMITIDO;
+
+// Quando o bot entrar em qualquer servidor
+client.on("guildCreate", guild => {
+    if (guild.id !== SERVIDOR_PERMITIDO) {
+        console.log(`❌ Servidor não autorizado: ${guild.name} — Saindo...`);
+        guild.leave();
+    }
+});
+
+
 
 client.login(TOKEN);
+
 
 
 
