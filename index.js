@@ -473,7 +473,70 @@ client.on("messageCreate", async (message) => {
   }
 });
 
+// ================== HIERARQUIA AUTOMÁTICA ==================
+
+const CANAL_HIERARQUIA = process.env.CANAL_HIERARQUIA;
+let mensagemHierarquiaId = null;
+
+// Função que gera a hierarquia automaticamente
+async function atualizarHierarquia(guild) {
+  try {
+    const canal = guild.channels.cache.get(CANAL_HIERARQUIA);
+    if (!canal) return;
+
+    // Pega cargos visíveis, ignora bots e everyone
+    const cargos = guild.roles.cache
+      .filter(r => r.name !== "@everyone" && !r.managed)
+      .sort((a, b) => b.position - a.position);
+
+    let texto = "";
+    let contador = 1;
+
+    cargos.forEach(role => {
+      texto += `**${contador}.** ${role}\n`;
+      contador++;
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle("<@&1449925546858516551> Lista De Cargo Automatico Da Familia A7")
+      .setDescription(texto || "Nenhum cargo encontrado.")
+      .setColor("#2b2d31")
+      .setFooter({ text: "Atualizado automaticamente" })
+      .setTimestamp();
+
+    // Se já existir mensagem, edita
+    if (mensagemHierarquiaId) {
+      const msg = await canal.messages.fetch(mensagemHierarquiaId).catch(() => null);
+      if (msg) {
+        await msg.edit({ embeds: [embed] });
+        return;
+      }
+    }
+
+    // Se não existir, envia nova
+    const novaMsg = await canal.send({ embeds: [embed] });
+    mensagemHierarquiaId = novaMsg.id;
+
+  } catch (err) {
+    console.log("Erro ao atualizar hierarquia:", err);
+  }
+}
+
+// Quando o bot liga
+client.on("ready", async () => {
+  client.guilds.cache.forEach(guild => {
+    atualizarHierarquia(guild);
+  });
+});
+
+// Atualiza quando cargos mudarem
+client.on(Events.GuildRoleCreate, role => atualizarHierarquia(role.guild));
+client.on(Events.GuildRoleDelete, role => atualizarHierarquia(role.guild));
+client.on(Events.GuildRoleUpdate, (oldRole, newRole) => atualizarHierarquia(newRole.guild));
+
+
 client.login(TOKEN);
+
 
 
 
