@@ -473,69 +473,74 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// ================== HIERARQUIA AUTOMÁTICA ==================
+// ================== HIERARQUIA AUTOMÁTICA (COMPATÍVEL) ==================
 
 const CANAL_HIERARQUIA = process.env.CANAL_HIERARQUIA;
-let mensagemHierarquiaId = null;
+let HIERARQUIA_MSG_ID;
 
-// Função que gera a hierarquia automaticamente
-async function atualizarHierarquia(guild) {
+// Função global (não depende de ready)
+async function atualizarHierarquiaAuto(guild) {
   try {
     const canal = guild.channels.cache.get(CANAL_HIERARQUIA);
-    if (!canal) return;
+    if (!canal || !canal.isTextBased()) return;
 
-    // Pega cargos visíveis, ignora bots e everyone
     const cargos = guild.roles.cache
       .filter(r => r.name !== "@everyone" && !r.managed)
       .sort((a, b) => b.position - a.position);
 
     let texto = "";
-    let contador = 1;
+    let i = 1;
 
-    cargos.forEach(role => {
-      texto += `**${contador}.** ${role}\n`;
-      contador++;
-    });
+    for (const role of cargos.values()) {
+      texto += `**${i}.** ${role}\n`;
+      i++;
+    }
 
     const embed = new EmbedBuilder()
-      .setTitle("<@&1449925546858516551> Lista De Cargo Automatico Da Familia A7")
+      .setTitle("👑 Hierarquia Oficial de Acessos — SantaCreators")
       .setDescription(texto || "Nenhum cargo encontrado.")
       .setColor("#2b2d31")
-      .setFooter({ text: "Atualizado automaticamente" })
+      .setFooter({ text: "Atualização automática" })
       .setTimestamp();
 
-    // Se já existir mensagem, edita
-    if (mensagemHierarquiaId) {
-      const msg = await canal.messages.fetch(mensagemHierarquiaId).catch(() => null);
+    // Busca última mensagem do bot
+    if (!HIERARQUIA_MSG_ID) {
+      const msgs = await canal.messages.fetch({ limit: 10 });
+      const antiga = msgs.find(m => m.author.id === client.user.id);
+      if (antiga) HIERARQUIA_MSG_ID = antiga.id;
+    }
+
+    // Edita ou cria
+    if (HIERARQUIA_MSG_ID) {
+      const msg = await canal.messages.fetch(HIERARQUIA_MSG_ID).catch(() => null);
       if (msg) {
         await msg.edit({ embeds: [embed] });
         return;
       }
     }
 
-    // Se não existir, envia nova
-    const novaMsg = await canal.send({ embeds: [embed] });
-    mensagemHierarquiaId = novaMsg.id;
+    const nova = await canal.send({ embeds: [embed] });
+    HIERARQUIA_MSG_ID = nova.id;
 
   } catch (err) {
-    console.log("Erro ao atualizar hierarquia:", err);
+    console.log("❌ Erro hierarquia:", err);
   }
 }
 
-// Quando o bot liga
-client.on("ready", async () => {
-  client.guilds.cache.forEach(guild => {
-    atualizarHierarquia(guild);
-  });
-});
+// ⚙ Atualiza quando cargos mudarem
+client.on(Events.GuildRoleCreate, role => atualizarHierarquiaAuto(role.guild));
+client.on(Events.GuildRoleDelete, role => atualizarHierarquiaAuto(role.guild));
+client.on(Events.GuildRoleUpdate, (o, n) => atualizarHierarquiaAuto(n.guild));
 
-// Atualiza quando cargos mudarem
-client.on(Events.GuildRoleCreate, role => atualizarHierarquia(role.guild));
-client.on(Events.GuildRoleDelete, role => atualizarHierarquia(role.guild));
-client.on(Events.GuildRoleUpdate, (oldRole, newRole) => atualizarHierarquia(newRole.guild));
+// ⚙ Atualiza quando o bot ficar online (SEM criar outro ready)
+client.on("ready", () => {
+  const guild = client.guilds.cache.first();
+  if (guild) atualizarHierarquiaAuto(guild);
+});
 
 
 client.login(TOKEN);
+
 
 
 
