@@ -480,7 +480,7 @@ client.on("messageCreate", async (message) => {
   if (message.content === "!hierarquia") {
 
     const embed = new EmbedBuilder()
-      .setTitle("👑 Hierarquia de cargos Oficial Familia A7 ")
+      .setTitle("👑 Hierarquia de cargos Oficial Familia A7")
       .setColor("#2b2d31")
       .setDescription(`
 **1.** 👑 <@&1439807240407089364>  
@@ -488,15 +488,15 @@ client.on("messageCreate", async (message) => {
 **3.** 🎯 <@&1424565267383586857>  
 **4.** 💜 <@&1426490120294367324>  
 **5.** 🔥 <@&1439068773112873114>  
-**6.** 📊 <@&1448314488754540707>
+**6.** 📊 <@&1448314488754540707>  
 **7.** 🎥 <@&1432229852122972250>  
-**8.** 🧩 <@&1434317739501031484>
+**8.** 🧩 <@&1434317739501031484>  
 **9.** 🏛️ <@&1424556258601599141>  
 **10.** 👑 <@&1443984052406452295>  
 **11.** 🔴 <@&1424557312042860604>  
 **12.** 🎭 <@&1424556397387059241>  
-
-      .setFooter({ text: "SantaCreators • Sistema Oficial" })
+`)
+      .setFooter({ text: "A7 • A7 " })
       .setTimestamp();
 
     await message.channel.send({ embeds: [embed] });
@@ -504,6 +504,7 @@ client.on("messageCreate", async (message) => {
 });
 
 client.login(TOKEN);
+
 
 
 
