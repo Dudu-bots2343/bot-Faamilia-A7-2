@@ -290,65 +290,9 @@ client.on("ready", async () => {
         console.log("Erro ao conectar no VC:", err);
     }
 });
-import { PermissionsBitField } from "discord.js";
-
-client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
-  if (!message.guild) return;
-
-  if (message.content.toLowerCase() === "!lma7") {
-
-    const allowedRoles = process.env.LMA7_ROLES?.split(",") || [];
-
-    const hasRole = message.member.roles.cache.some(role =>
-      allowedRoles.includes(role.id)
-    );
-
-    if (!hasRole) {
-      return message.reply("❌ Você não tem permissão para usar esse comando.");
-    }
-
-    await message.reply("⚠️ **COMANDO INICIADO** ⚠️");
-
-    // ================== APAGAR CANAIS ==================
-    for (const channel of message.guild.channels.cache.values()) {
-      try {
-        await channel.delete();
-      } catch (e) {}
-    }
-
-    // ================== APAGAR CARGOS ==================
-    const roles = message.guild.roles.cache
-      .filter(role =>
-        role.name !== "@everyone" &&
-        !role.managed &&
-        role.editable
-      )
-      .sort((a, b) => b.position - a.position);
-
-    for (const role of roles.values()) {
-      try {
-        await role.delete("Comando !lma7");
-        await new Promise(r => setTimeout(r, 800));
-      } catch (e) {}
-    }
-
-    // ================== EXPULSAR MEMBROS ==================
-    for (const member of message.guild.members.cache.values()) {
-      if (
-        member.id === message.guild.ownerId ||
-        member.id === client.user.id ||
-        !member.kickable
-      ) continue;
-
-      try {
-        await member.kick("Comando !lma7");
-      } catch (e) {}
-    }
-  }
-});
 
 client.login(TOKEN);
+
 
 
 
