@@ -479,7 +479,6 @@ let textoCanal;
 
 if (/^\d+$/.test(idInformado)) {
 
-  // Cargo com ID
   cargoFinal = interaction.guild.roles.cache.find(r => r.name === idInformado);
 
   if (!cargoFinal) {
@@ -494,7 +493,6 @@ if (/^\d+$/.test(idInformado)) {
 
 } else {
 
-  // Cargo ID não informado
   cargoFinal = interaction.guild.roles.cache.find(r => r.name === "ID não informado");
 
   if (!cargoFinal) {
@@ -512,16 +510,18 @@ if (/^\d+$/.test(idInformado)) {
 await membro.roles.add(cargoFinal);
 
 // ================== MENSAGEM NO CANAL ==================
-const canalSet = await interaction.guild.channels.fetch(process.env.CANAL_SET_APROVADO).catch(() => null);
+const canalSet = await interaction.guild.channels
+  .fetch(process.env.CANAL_SET_APROVADO)
+  .catch(() => null);
 
 if (canalSet) {
-  canalSet.send({
-    content: textoCanal
-  });
+  canalSet.send({ content: textoCanal });
 }
 
 
+
 client.login(TOKEN);
+
 
 
 
