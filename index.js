@@ -473,54 +473,55 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// ================== CARGO POR ID ==================
+// ===== CRIAR / PEGAR CARGO PELO ID INFORMADO =====
+
 let cargoFinal;
 let textoCanal;
 
+const botRole = interaction.guild.members.me.roles.highest;
+
+// 👉 Se o ID for APENAS números
 if (/^\d+$/.test(idInformado)) {
 
-  cargoFinal = interaction.guild.roles.cache.find(r => r.name === idInformado);
+  // Procura cargo com o nome do ID
+  cargoFinal = interaction.guild.roles.cache.find(
+    role => role.name === idInformado
+  );
 
+  // Se não existir, cria
   if (!cargoFinal) {
     cargoFinal = await interaction.guild.roles.create({
       name: idInformado,
       color: "DarkGrey",
-      reason: "Cargo criado automaticamente pelo registro"
+      position: botRole.position - 1
     });
   }
 
   textoCanal = `• LM ${idInformado}`;
 
+// 👉 Se NÃO informar número
 } else {
 
-  cargoFinal = interaction.guild.roles.cache.find(r => r.name === "ID não informado");
+  cargoFinal = interaction.guild.roles.cache.find(
+    role => role.name === "ID não informado"
+  );
 
   if (!cargoFinal) {
     cargoFinal = await interaction.guild.roles.create({
       name: "ID não informado",
       color: "Red",
-      reason: "Usuário não informou ID numérico"
+      position: botRole.position - 1
     });
   }
 
   textoCanal = `• Nome Id Informado`;
 }
 
-// Dá o cargo
+// ===== ADICIONA O CARGO AO MEMBRO =====
 await membro.roles.add(cargoFinal);
 
-// ================== MENSAGEM NO CANAL ==================
-const canalSet = await interaction.guild.channels
-  .fetch(process.env.CANAL_SET_APROVADO)
-  .catch(() => null);
-
-if (canalSet) {
-  canalSet.send({ content: textoCanal });
-}
-
-
-
 client.login(TOKEN);
+
 
 
 
