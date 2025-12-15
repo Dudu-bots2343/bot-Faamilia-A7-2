@@ -473,73 +473,38 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// ================== HIERARQUIA AUTOMÁTICA (COMPATÍVEL) ==================
+// ================== HIERARQUIA OFICIAL ==================
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
 
-const CANAL_HIERARQUIA = process.env.CANAL_HIERARQUIA;
-let HIERARQUIA_MSG_ID;
-
-// Função global (não depende de ready)
-async function atualizarHierarquiaAuto(guild) {
-  try {
-    const canal = guild.channels.cache.get(CANAL_HIERARQUIA);
-    if (!canal || !canal.isTextBased()) return;
-
-    const cargos = guild.roles.cache
-      .filter(r => r.name !== "@everyone" && !r.managed)
-      .sort((a, b) => b.position - a.position);
-
-    let texto = "";
-    let i = 1;
-
-    for (const role of cargos.values()) {
-      texto += `**${i}.** ${role}\n`;
-      i++;
-    }
+  if (message.content === "!hierarquia") {
 
     const embed = new EmbedBuilder()
-      .setTitle("👑 Hierarquia Oficial de Acessos — SantaCreators")
-      .setDescription(texto || "Nenhum cargo encontrado.")
+      .setTitle("👑 Hierarquia de cargos Oficial Familia A7 ")
       .setColor("#2b2d31")
-      .setFooter({ text: "Atualização automática" })
+      .setDescription(`
+**1.** 👑 <@&1439807240407089364>  
+**2.** 🛡️ <@&1448454535596085460>  
+**3.** 🎯 <@&1424565267383586857>  
+**4.** 💜 <@&1426490120294367324>  
+**5.** 🔥 <@&1439068773112873114>  
+**6.** 📊 <@&1448314488754540707>
+**7.** 🎥 <@&1432229852122972250>  
+**8.** 🧩 <@&1434317739501031484>
+**9.** 🏛️ <@&1424556258601599141>  
+**10.** 👑 <@&1443984052406452295>  
+**11.** 🔴 <@&1424557312042860604>  
+**12.** 🎭 <@&1424556397387059241>  
+
+      .setFooter({ text: "SantaCreators • Sistema Oficial" })
       .setTimestamp();
 
-    // Busca última mensagem do bot
-    if (!HIERARQUIA_MSG_ID) {
-      const msgs = await canal.messages.fetch({ limit: 10 });
-      const antiga = msgs.find(m => m.author.id === client.user.id);
-      if (antiga) HIERARQUIA_MSG_ID = antiga.id;
-    }
-
-    // Edita ou cria
-    if (HIERARQUIA_MSG_ID) {
-      const msg = await canal.messages.fetch(HIERARQUIA_MSG_ID).catch(() => null);
-      if (msg) {
-        await msg.edit({ embeds: [embed] });
-        return;
-      }
-    }
-
-    const nova = await canal.send({ embeds: [embed] });
-    HIERARQUIA_MSG_ID = nova.id;
-
-  } catch (err) {
-    console.log("❌ Erro hierarquia:", err);
+    await message.channel.send({ embeds: [embed] });
   }
-}
-
-// ⚙ Atualiza quando cargos mudarem
-client.on(Events.GuildRoleCreate, role => atualizarHierarquiaAuto(role.guild));
-client.on(Events.GuildRoleDelete, role => atualizarHierarquiaAuto(role.guild));
-client.on(Events.GuildRoleUpdate, (o, n) => atualizarHierarquiaAuto(n.guild));
-
-// ⚙ Atualiza quando o bot ficar online (SEM criar outro ready)
-client.on("ready", () => {
-  const guild = client.guilds.cache.first();
-  if (guild) atualizarHierarquiaAuto(guild);
 });
 
-
 client.login(TOKEN);
+
 
 
 
