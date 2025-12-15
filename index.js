@@ -472,55 +472,74 @@ client.on("messageCreate", async (message) => {
     }
   }
 });
+// ================== CARGO AUTOMÁTICO POR ID (SET APROVADO) ==================
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isButton()) return;
 
-// ===== CRIAR / PEGAR CARGO PELO ID INFORMADO =====
+  const [acao, userId] = interaction.customId.split("_");
+  if (acao !== "aprovar") return;
 
-let cargoFinal;
-let textoCanal;
+  try {
+    const membro = await interaction.guild.members.fetch(userId);
 
-const botRole = interaction.guild.members.me.roles.highest;
+    const embedOriginal = interaction.message.embeds[0];
+    if (!embedOriginal) return;
 
-// 👉 Se o ID for APENAS números
-if (/^\d+$/.test(idInformado)) {
+    const idInformado = embedOriginal.fields
+      .find(f => f.name === "ID Informado")?.value;
 
-  // Procura cargo com o nome do ID
-  cargoFinal = interaction.guild.roles.cache.find(
-    role => role.name === idInformado
-  );
+    if (!idInformado) return;
 
-  // Se não existir, cria
-  if (!cargoFinal) {
-    cargoFinal = await interaction.guild.roles.create({
-      name: idInformado,
-      color: "DarkGrey",
-      position: botRole.position - 1
-    });
+    let cargoFinal;
+    const botRole = interaction.guild.members.me.roles.highest;
+
+    // ===== ID SOMENTE NÚMEROS =====
+    if (/^\d+$/.test(idInformado)) {
+
+      cargoFinal = interaction.guild.roles.cache.find(
+        r => r.name === idInformado
+      );
+
+      if (!cargoFinal) {
+        cargoFinal = await interaction.guild.roles.create({
+          name: idInformado,
+          color: "DarkGrey",
+          position: botRole.position - 1,
+          reason: "Cargo criado automaticamente pelo registro"
+        });
+      }
+
+    // ===== ID NÃO INFORMADO =====
+    } else {
+
+      cargoFinal = interaction.guild.roles.cache.find(
+        r => r.name === "ID não informado"
+      );
+
+      if (!cargoFinal) {
+        cargoFinal = await interaction.guild.roles.create({
+          name: "ID não informado",
+          color: "Red",
+          position: botRole.position - 1,
+          reason: "Usuário não informou ID numérico"
+        });
+      }
+    }
+
+    // ===== ADICIONA O CARGO =====
+    if (cargoFinal) {
+      await membro.roles.add(cargoFinal);
+      console.log(`✅ Cargo ${cargoFinal.name} adicionado a ${membro.user.tag}`);
+    }
+
+  } catch (err) {
+    console.error("❌ ERRO NO SISTEMA DE CARGO POR ID:", err);
   }
+});
 
-  textoCanal = `• LM ${idInformado}`;
-
-// 👉 Se NÃO informar número
-} else {
-
-  cargoFinal = interaction.guild.roles.cache.find(
-    role => role.name === "ID não informado"
-  );
-
-  if (!cargoFinal) {
-    cargoFinal = await interaction.guild.roles.create({
-      name: "ID não informado",
-      color: "Red",
-      position: botRole.position - 1
-    });
-  }
-
-  textoCanal = `• Nome Id Informado`;
-}
-
-// ===== ADICIONA O CARGO AO MEMBRO =====
-await membro.roles.add(cargoFinal);
 
 client.login(TOKEN);
+
 
 
 
