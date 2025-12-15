@@ -473,37 +473,137 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-// ================== HIERARQUIA OFICIAL ==================
-client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
+// ================== TEMPO EM CALL (AUTO + ACUMULATIVO) ==================
 
-  if (message.content === "!hierarquia") {
+const fs = require("fs");
+const ARQUIVO = "./tempoCall.json";
+const CANAL_TEMPO_CALL = process.env.CANAL_TEMPO_CALL;
 
-    const embed = new EmbedBuilder()
-      .setTitle("👑 Hierarquia de cargos Oficial Familia A7")
-      .setColor("#2b2d31")
-      .setDescription(`
-**1.** 👑 <@&1439807240407089364>  
-**2.** 🛡️ <@&1448454535596085460>  
-**3.** 🎯 <@&1424565267383586857>  
-**4.** 💜 <@&1426490120294367324>  
-**5.** 🔥 <@&1439068773112873114>  
-**6.** 📊 <@&1448314488754540707>  
-**7.** 🎥 <@&1432229852122972250>  
-**8.** 🧩 <@&1434317739501031484>  
-**9.** 🏛️ <@&1424556258601599141>  
-**10.** 👑 <@&1443984052406452295>  
-**11.** 🔴 <@&1424557312042860604>  
-**12.** 🎭 <@&1424556397387059241>  
-`)
-      .setFooter({ text: "A7 • A7 " })
-      .setTimestamp();
+// Carrega dados salvos
+let tempoTotal = {};
+if (fs.existsSync(ARQUIVO)) {
+  tempoTotal = JSON.parse(fs.readFileSync(ARQUIVO));
+}
 
-    await message.channel.send({ embeds: [embed] });
+// Guarda quem está em call agora
+const entrouEmCall = new Map();
+
+// Salvar dados
+function salvar() {
+  fs.writeFileSync(ARQUIVO, JSON.stringify(tempoTotal, null, 2));
+}
+
+// ⏱️ Formatar tempo
+function formatar(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h}h ${m}m ${sec}s`;
+}
+
+// 🎧 Detectar call
+client.on("voiceStateUpdate", (oldState, newState) => {
+  const membro = newState.member || oldState.member;
+  if (!membro || membro.user.bot) return;
+
+  const agora = Date.now();
+
+  // Entrou em call
+  if (!oldState.channelId && newState.channelId) {
+    entrouEmCall.set(membro.id, agora);
+  }
+
+  // Saiu da call
+  if (oldState.channelId && !newState.channelId) {
+    const inicio = entrouEmCall.get(membro.id);
+    if (inicio) {
+      tempoTotal[membro.id] = (tempoTotal[membro.id] || 0) + (agora - inicio);
+      entrouEmCall.delete(membro.id);
+      salvar();
+    }
+  }
+
+  // Mudou de call
+  if (
+    oldState.channelId &&
+    newState.channelId &&
+    oldState.channelId !== newState.channelId
+  ) {
+    const inicio = entrouEmCall.get(membro.id);
+    if (inicio) {
+      tempoTotal[membro.id] = (tempoTotal[membro.id] || 0) + (agora - inicio);
+      entrouEmCall.set(membro.id, agora);
+      salvar();
+    }
   }
 });
 
+let msgId = null;
+
+// 🔄 Atualizar ranking automaticamente
+async function atualizarMensagem() {
+  try {
+    const canal = await client.channels.fetch(CANAL_TEMPO_CALL);
+    if (!canal || !canal.isTextBased()) return;
+
+    const agora = Date.now();
+    const ranking = [];
+
+    for (const id in tempoTotal) {
+      let tempo = tempoTotal[id];
+      if (entrouEmCall.has(id)) {
+        tempo += agora - entrouEmCall.get(id);
+      }
+      ranking.push({ id, tempo });
+    }
+
+    if (!ranking.length) return;
+
+    ranking.sort((a, b) => b.tempo - a.tempo);
+
+    let texto = "";
+    let pos = 1;
+
+    for (const r of ranking.slice(0, 15)) {
+      texto += `**${pos}.** <@${r.id}> — ⏱️ ${formatar(r.tempo)}\n`;
+      pos++;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle("🎧 Ranking de Tempo em Call")
+      .setDescription(texto)
+      .setColor("#5865F2")
+      .setFooter({ text: "Atualização automática • Tempo acumulado" })
+      .setTimestamp();
+
+    // Edita se já existir
+    if (msgId) {
+      const msg = await canal.messages.fetch(msgId).catch(() => null);
+      if (msg) {
+        await msg.edit({ embeds: [embed] });
+        return;
+      }
+    }
+
+    // Se não existir, cria
+    const nova = await canal.send({ embeds: [embed] });
+    msgId = nova.id;
+
+  } catch (err) {
+    console.log("Erro tempo call:", err);
+  }
+}
+
+// ⏰ Atualiza sozinho
+setInterval(atualizarMensagem, 2 * 60 * 1000);
+
+// 🔥 Atualiza quando o bot liga
+client.on("ready", atualizarMensagem);
+
+
 client.login(TOKEN);
+
 
 
 
