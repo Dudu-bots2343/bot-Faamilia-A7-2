@@ -472,73 +472,9 @@ client.on("messageCreate", async (message) => {
     }
   }
 });
-// ================== CARGO AUTOMÁTICO POR ID (SET APROVADO) ==================
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isButton()) return;
-
-  const [acao, userId] = interaction.customId.split("_");
-  if (acao !== "aprovar") return;
-
-  try {
-    const membro = await interaction.guild.members.fetch(userId);
-
-    const embedOriginal = interaction.message.embeds[0];
-    if (!embedOriginal) return;
-
-    const idInformado = embedOriginal.fields
-      .find(f => f.name === "ID Informado")?.value;
-
-    if (!idInformado) return;
-
-    let cargoFinal;
-    const botRole = interaction.guild.members.me.roles.highest;
-
-    // ===== ID SOMENTE NÚMEROS =====
-    if (/^\d+$/.test(idInformado)) {
-
-      cargoFinal = interaction.guild.roles.cache.find(
-        r => r.name === idInformado
-      );
-
-      if (!cargoFinal) {
-        cargoFinal = await interaction.guild.roles.create({
-          name: idInformado,
-          color: "DarkGrey",
-          position: botRole.position - 1,
-          reason: "Cargo criado automaticamente pelo registro"
-        });
-      }
-
-    // ===== ID NÃO INFORMADO =====
-    } else {
-
-      cargoFinal = interaction.guild.roles.cache.find(
-        r => r.name === "ID não informado"
-      );
-
-      if (!cargoFinal) {
-        cargoFinal = await interaction.guild.roles.create({
-          name: "ID não informado",
-          color: "Red",
-          position: botRole.position - 1,
-          reason: "Usuário não informou ID numérico"
-        });
-      }
-    }
-
-    // ===== ADICIONA O CARGO =====
-    if (cargoFinal) {
-      await membro.roles.add(cargoFinal);
-      console.log(`✅ Cargo ${cargoFinal.name} adicionado a ${membro.user.tag}`);
-    }
-
-  } catch (err) {
-    console.error("❌ ERRO NO SISTEMA DE CARGO POR ID:", err);
-  }
-});
-
 
 client.login(TOKEN);
+
 
 
 
