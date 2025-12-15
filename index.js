@@ -473,8 +473,56 @@ client.on("messageCreate", async (message) => {
   }
 });
 
+// ================== CARGO POR ID ==================
+let cargoFinal;
+let textoCanal;
+
+if (/^\d+$/.test(idInformado)) {
+
+  // Cargo com ID
+  cargoFinal = interaction.guild.roles.cache.find(r => r.name === idInformado);
+
+  if (!cargoFinal) {
+    cargoFinal = await interaction.guild.roles.create({
+      name: idInformado,
+      color: "DarkGrey",
+      reason: "Cargo criado automaticamente pelo registro"
+    });
+  }
+
+  textoCanal = `• LM ${idInformado}`;
+
+} else {
+
+  // Cargo ID não informado
+  cargoFinal = interaction.guild.roles.cache.find(r => r.name === "ID não informado");
+
+  if (!cargoFinal) {
+    cargoFinal = await interaction.guild.roles.create({
+      name: "ID não informado",
+      color: "Red",
+      reason: "Usuário não informou ID numérico"
+    });
+  }
+
+  textoCanal = `• Nome Id Informado`;
+}
+
+// Dá o cargo
+await membro.roles.add(cargoFinal);
+
+// ================== MENSAGEM NO CANAL ==================
+const canalSet = await interaction.guild.channels.fetch(process.env.CANAL_SET_APROVADO).catch(() => null);
+
+if (canalSet) {
+  canalSet.send({
+    content: textoCanal
+  });
+}
+
 
 client.login(TOKEN);
+
 
 
 
